@@ -1,7 +1,15 @@
+import logging
+
+from werkzeug.exceptions import BadRequest
+
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
 
-class NotFoundError(Exception):
+logger = logging.getLogger(__file__)
+logger.setLevel(logging.DEBUG)
+
+
+class NotFoundError(BadRequest):
     """Exception raised if a Validation does not exist.
 
     Attributes:
