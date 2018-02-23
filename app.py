@@ -27,7 +27,7 @@ api = Api(app, version='0.1.0-dev', title='Thoth: Dependency Monkey API',
           description='... API',
           )
 
-ns = api.namespace('validations', description='Validations')
+ns = api.namespace('validations', path='/api/v0', description='Validations')
 
 validation = api.model('Todo', {
     'id': fields.Integer(required=True, readOnly=True, description='The Validation unique identifier'),
