@@ -9,6 +9,7 @@ name = "pypi"
 
 flask = "*"
 flask-restplus = "*"
+prometheus-client = "*"
 
 
 [dev-packages]
