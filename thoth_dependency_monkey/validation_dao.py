@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from werkzeug.exceptions import BadRequest
 
@@ -43,6 +44,8 @@ class ValidationDAO():
 
         # TODO check if stack_specification is valid
 
+        v['result_queue_name'] = self._get_result_queue_name()
+
         self.validations.append(v)
 
         return v
@@ -51,3 +54,6 @@ class ValidationDAO():
         v = self.get(id)
 
         self.validations.remove(v)
+
+    def _get_result_queue_name(self):
+        return str(uuid.uuid4())

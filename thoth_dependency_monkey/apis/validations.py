@@ -13,7 +13,8 @@ ns = Namespace('validations', description='Validations')
 validation = ns.model('Validation', {
     'id': fields.Integer(required=True, readOnly=True, description='The Validation unique identifier'),
     'stack_specification': fields.String(required=True, description='Specification of the Software Stack'),
-    'ecosystem': fields.String(required=True, default='pypi', description='In which ecosystem is the stack specification to be validated')
+    'ecosystem': fields.String(required=True, default='pypi', description='In which ecosystem is the stack specification to be validated'),
+    'result_queue_name': fields.String(description='The name of the Kafka queue containing the result of the Validation.')
 })
 
 
