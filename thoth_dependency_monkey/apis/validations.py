@@ -1,6 +1,6 @@
 import logging
 
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, ServiceUnavailable
 from flask import request
 from flask_restplus import Namespace, Resource, fields
 
@@ -60,6 +60,7 @@ class ValidationList(Resource):
     @ns.doc('request_validation')
     @ns.expect(validation)
     @ns.marshal_with(validation, code=201)
+    @ns.response(503, 'Service we depend on is not available')
     @ns.response(400, 'Ecosystem not supported')
     @ns.response(201, 'Validation request accepted')
     def post(self):
@@ -69,8 +70,10 @@ class ValidationList(Resource):
             v = DAO.create(request.get_json())
         except EcosystemNotSupportedError as err:
             ns.abort(400, str(err))
+        except ServiceUnavailable as e:
+            ns.abort(503, str(e))
         except Exception as e:
-            ns.abort(400, str(e))
-            raise BadRequest()
+            ns.abort(500, str(e))
+            raise e
 
         return v, 201
