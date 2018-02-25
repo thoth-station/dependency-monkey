@@ -1,3 +1,4 @@
+import os
 import uuid
 
 from pymongo import MongoClient
@@ -5,6 +6,19 @@ from bson.objectid import ObjectId, InvalidId
 from werkzeug.exceptions import BadRequest
 
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
+
+
+MONGODB_USER = os.getenv('MONGODB_USER', '')
+MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD', '')
+MONGODB_HOSTNAME = os.getenv('MONGODB_HOSTNAME', 'mongodb')
+MONGODB_PORT = os.getenv('MONGODB_SERVICE_PORT', 27017)
+MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'local')
+
+MONGODB_URL = 'mongodb://{}:{}@{}:{}/'.format(
+    MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOSTNAME, MONGODB_PORT)
+
+if MONGODB_USER+MONGODB_PASSWORD == '':
+    MONGODB_URL = 'mongodb://{}:{}/'.format(MONGODB_HOSTNAME, MONGODB_PORT)
 
 
 class NotFoundError(BadRequest):
@@ -22,7 +36,7 @@ class NotFoundError(BadRequest):
 
 class ValidationDAO():
     def __init__(self):
-        self.mongo = MongoClient('mongodb://localhost:27017/')
+        self.mongo = MongoClient(MONGODB_URL)
 
     def get(self, id):
         try:
