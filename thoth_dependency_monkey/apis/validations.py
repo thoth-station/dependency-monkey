@@ -11,7 +11,7 @@ from thoth_dependency_monkey.ecosystem import ECOSYSTEM, EcosystemNotSupportedEr
 ns = Namespace('validations', description='Validations')
 
 validation = ns.model('Validation', {
-    'id': fields.Integer(required=True, readOnly=True, description='The Validation unique identifier'),
+    'id': fields.String(required=True, readOnly=True, description='The Validation unique identifier'),
     'stack_specification': fields.String(required=True, description='Specification of the Software Stack'),
     'ecosystem': fields.String(required=True, default='pypi', description='In which ecosystem is the stack specification to be validated'),
     'result_queue_name': fields.String(description='The name of the Kafka queue containing the result of the Validation.')
@@ -22,7 +22,7 @@ DAO = ValidationDAO()
 logger = logging.getLogger(__file__)
 
 
-@ns.route('/<int:id>')
+@ns.route('/<string:id>')
 @ns.response(404, 'Validation not found')
 @ns.param('id', 'The Validation identifier')
 class Validation(Resource):
@@ -57,15 +57,6 @@ class Validation(Resource):
 @ns.route('/')
 class ValidationList(Resource):
     """Shows a list of all Validations, and let's you request a new Validation"""
-    @ns.doc('list_validations')
-    @ns.marshal_list_with(validation)
-    def get(self):
-        """List all Validations"""
-
-        logger.debug(request)
-
-        return DAO.validations
-
     @ns.doc('request_validation')
     @ns.expect(validation)
     @ns.marshal_with(validation, code=201)

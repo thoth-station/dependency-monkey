@@ -9,6 +9,7 @@ from flask import Flask, redirect, request, jsonify
 from flask.helpers import make_response
 
 from flask_restplus import Resource, Api, fields
+
 from prometheus_client import Counter, Histogram, generate_latest, CollectorRegistry, CONTENT_TYPE_LATEST, core
 
 import thoth_dependency_monkey

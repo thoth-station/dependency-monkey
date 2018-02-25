@@ -1,13 +1,10 @@
-import logging
 import uuid
 
+from pymongo import MongoClient
+from bson.objectid import ObjectId, InvalidId
 from werkzeug.exceptions import BadRequest
 
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
-
-
-logger = logging.getLogger(__file__)
-logger.setLevel(logging.DEBUG)
 
 
 class NotFoundError(BadRequest):
@@ -25,19 +22,27 @@ class NotFoundError(BadRequest):
 
 class ValidationDAO():
     def __init__(self):
-        self.counter = 0
-        self.validations = []
+        self.mongo = MongoClient('mongodb://localhost:27017/')
 
     def get(self, id):
-        for v in self.validations:
-            if v['id'] == id:
-                return v
+        try:
+            v = self.mongo['local']['validations'].find_one(
+                {"_id": ObjectId(id)})
+        except InvalidId as e:
+            raise NotFoundError(id)
 
-        raise NotFoundError(id)
+        if v is None:
+            raise NotFoundError(id)
+
+        v['id'] = id
+
+        return v
+
+    def get_all(self):
+        return self.mongo['local']['validations'].find()
 
     def create(self, data):
         v = data
-        v['id'] = self.counter = self.counter + 1
 
         if v['ecosystem'] not in ECOSYSTEM:
             raise EcosystemNotSupportedError(v['ecosystem'])
@@ -45,15 +50,16 @@ class ValidationDAO():
         # TODO check if stack_specification is valid
 
         v['result_queue_name'] = self._get_result_queue_name()
+        _v = self.mongo['local']['validations'].insert_one(v)
 
-        self.validations.append(v)
+        v['id'] = _v.inserted_id
 
         return v
 
     def delete(self, id):
         v = self.get(id)
 
-        self.validations.remove(v)
+        self.mongo['local']['validations'].remove({"_id": ObjectId(id)})
 
     def _get_result_queue_name(self):
         return str(uuid.uuid4())
