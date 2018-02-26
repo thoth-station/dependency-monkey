@@ -6,14 +6,12 @@ from setuptools import setup, find_packages
 import thoth_dependency_monkey
 
 
-def get_requirements():
-    from pipenv.project import Project
-    from pipenv.utils import convert_deps_to_pip
-
-    pfile = Project(chdir=False).parsed_pipfile
-    requirements = convert_deps_to_pip(pfile['packages'], r=False)
-
-    return requirements
+REQUIRES = [
+    'flask',
+    'flask-restplus',
+    'prometheus-client',
+    'openshift'
+]
 
 
 setup(
@@ -25,7 +23,7 @@ setup(
             'swagger.yaml'
         ]
     },
-    install_requires=get_requirements(),
+    install_requires=REQUIRES,
     author='Christoph Görn',
     author_email='goern@redhat.com',
     description=thoth_dependency_monkey.__description__,
