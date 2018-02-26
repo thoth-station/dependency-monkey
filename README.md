@@ -33,5 +33,6 @@ Travis-CI [![Build Status](https://travis-ci.org/goern/thoth-dependency-monkey.s
 Start the API Service: `MONGODB_HOSTNAME=localhost DEBUG=True ./app.py`.
 
 ```bash
-curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"stack_specification":"tensorflow","ecosystem":"pypi"}' 'http://localhost:8080/api/v0alpha0/validations/'
+curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"stack_specification":"string","ecosystem":"pypi"}' 'http://localhost:8080/api/v0alpha0/validations/'
+curl -X GET --header 'Accept: application/json' 'http://localhost:8080/api/v0alpha0/validations/<ID>'
 ```
