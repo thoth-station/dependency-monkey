@@ -10,6 +10,7 @@ name = "pypi"
 Flask = "*"
 flask-restplus = "*"
 prometheus_client = "*"
+'ruamel.yaml' = "<=0.15"
 openshift = "*"
 kubernetes = "*"
 
