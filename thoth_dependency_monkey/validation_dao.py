@@ -120,13 +120,14 @@ class ValidationDAO():
 
         _job = self._get_scheduled_validation_job(id)
 
-        if 'succeeded' in _job.status.to_dict().keys():
+        if _job.status.succeeded is not None:
             v['phase'] = 'succeeded'
+        elif _job.status.failed is not None:
+            v['phase'] = 'failed'
+        elif _job.status.active is not None:
+            v['phase'] = 'running'
 
         return v
-
-    def get_all(self):
-        return self.mongo[MONGODB_DATABASE]['validations'].find()
 
     def create(self, data):
         v = data
@@ -149,7 +150,7 @@ class ValidationDAO():
 
         v['id'] = _v.inserted_id
 
-        self._schedule_validation_job(v['id'])
+        self._schedule_validation_job(v['id'], v['stack_specification'])
 
         return v
 
@@ -178,7 +179,7 @@ class ValidationDAO():
     def _whats_my_name(self, id):
         return 'validation-job-' + str(id)
 
-    def _schedule_validation_job(self, id):
+    def _schedule_validation_job(self, id, spec):
         logger.debug('scheduling validation id {}'.format(id))
 
         config.load_kube_config()
@@ -191,19 +192,22 @@ class ValidationDAO():
                 'template':
                     {'spec':
                         {'containers': [
-                            {'image': 'busybox',
-                             'name': _name,
-                             'command': ["sh", "-c", "sleep 35"]
-                             }],
+                            {
+                                'image': 'busybox',
+                                'name': _name,
+                                'command': ["sh", "-c", "sleep 45"],
+                                'env': [
+                                    {
+                                        'name': 'stack_specification',
+                                        'value': spec
+                                    }
+                                ]
+                            }
+                        ],
                             'restartPolicy': 'Never'},
                         'metadata': {'name': _name}}},
             'apiVersion': 'batch/v1',
-            'metadata': {
-                    'name': _name,
-                    'labels': {
-                        'validation_id': str(id)
-                    }
-            }
+            'metadata': {'name': _name, 'labels': {'validation_id': str(id)}}
         }
 
         _api = batch_v1_api.BatchV1Api(_client)
