@@ -10,6 +10,7 @@ name = "pypi"
 flask = "*"
 flask-restplus = "*"
 prometheus-client = "*"
+pymongo = "*"
 
 
 [dev-packages]
