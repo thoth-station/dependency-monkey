@@ -7,12 +7,15 @@ python:
 
 # command to install dependencies
 install:
-  - pip install -r requirements-dev.txt
+  - pip install -r requirements-test.txt
 
 # command to run tests
 script:
   - true
 #  - pytest
+
+after_success:
+  - coveralls
 
 notifications:
   webhooks:
