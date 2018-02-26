@@ -21,11 +21,7 @@
 import os
 import logging
 import uuid
-import yaml
 
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
-from bson.objectid import ObjectId, InvalidId
 from werkzeug.exceptions import BadRequest, ServiceUnavailable
 from tempfile import NamedTemporaryFile
 from openshift import client, config
@@ -38,19 +34,6 @@ from kubernetes.client.apis import batch_v1_api
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
 DEBUG = bool(os.getenv('DEBUG', False))
-
-MONGODB_USER = os.getenv('MONGODB_USER', 'mongo')
-MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD', 'mongo')
-MONGODB_HOSTNAME = os.getenv('MONGODB_HOSTNAME', 'mongodb')
-MONGODB_PORT = os.getenv('MONGODB_SERVICE_PORT', 27017)
-MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'dev')
-
-MONGODB_URL = 'mongodb://{}:{}@{}:{}/{}'.format(
-    MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
-
-# if DEBUG and MONGODB_HOSTNAME == 'localhost':
-#    MONGODB_URL = 'mongodb://{}:{}/{}'.format(
-#        MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
 
 THOTH_NAMESPACE = 'thoth-dev'
 
@@ -75,11 +58,6 @@ class NotFoundError(BadRequest):
 
 class ValidationDAO():
     def __init__(self):
-        logger.debug('using MongoDB at {}'.format(MONGODB_URL))
-
-        # TODO handle auth, think about reconnect etc
-        self.mongo = MongoClient(MONGODB_URL)
-
         self.kconfig = Configuration()
 
         # if we can read bearer token from /var/run/secrets/kubernetes.io/serviceaccount/token use it,
@@ -105,20 +83,17 @@ class ValidationDAO():
             logger.info("not running within an OpenShift cluster...")
 
     def get(self, id):
-        try:
-            v = self.mongo[MONGODB_DATABASE]['validations'].find_one(
-                {"_id": ObjectId(id)})
-        except ConnectionFailure as e:
-            raise e  # TODO
-        except InvalidId as e:
-            raise NotFoundError(id)
-
-        if v is None:
-            raise NotFoundError(id)
+        v = {}
 
         v['id'] = id
 
         _job = self._get_scheduled_validation_job(id)
+
+        # lets copy the Validation information from the Kubernetes Job
+        for container in _job.spec.template.spec.containers:
+            if container.name.endswith(str(id)):
+                for env in container.env:
+                    v[env.name] = env.value
 
         if _job.status.succeeded is not None:
             v['phase'] = 'succeeded'
@@ -141,24 +116,16 @@ class ValidationDAO():
                 'specification is not valid within Ecosystem {}'.format(v['ecosystem']))
 
         v['phase'] = 'pending'
+        v['id'] = str(uuid.uuid4())
 
-        try:
-            _v = self.mongo[MONGODB_DATABASE]['validations'].insert_one(v)
-        except Exception as e:
-            logger.error(e)
-            raise ServiceUnavailable('database')
-
-        v['id'] = _v.inserted_id
-
-        self._schedule_validation_job(v['id'], v['stack_specification'])
+        self._schedule_validation_job(
+            v['id'], v['stack_specification'], v['ecosystem'])
 
         return v
 
     def delete(self, id):
-        self.mongo[MONGODB_DATABASE]['validations'].remove(
-            {"_id": ObjectId(id)})
-
         # TODO add kubernetes job stuff
+        pass
 
     def _validate_requirements(self, spec):
         """This function will check if the syntax of the provided specification is valid"""
@@ -179,7 +146,7 @@ class ValidationDAO():
     def _whats_my_name(self, id):
         return 'validation-job-' + str(id)
 
-    def _schedule_validation_job(self, id, spec):
+    def _schedule_validation_job(self, id, spec, ecosystem):
         logger.debug('scheduling validation id {}'.format(id))
 
         config.load_kube_config()
@@ -200,6 +167,10 @@ class ValidationDAO():
                                     {
                                         'name': 'stack_specification',
                                         'value': spec
+                                    },
+                                    {
+                                        'name': 'ecosystem',
+                                        'value': ecosystem
                                     }
                                 ]
                             }
@@ -232,11 +203,7 @@ class ValidationDAO():
             _resp = _api.list_namespaced_job(
                 namespace=THOTH_NAMESPACE, include_uninitialized=True, label_selector='validation_id='+str(id))
 
-            _job = _resp.items[0]
-
-            logger.debug(_job.status)
-
-            return _job
+            return _resp.items[0]
 
         except kclient.rest.ApiException as e:
             logger.error(e)

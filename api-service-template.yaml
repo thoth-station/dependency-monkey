@@ -34,24 +34,6 @@ objects:
           deploymentconfig: api-service
       spec:
         containers:
-        - env:
-          - name: MONGODB_USER
-            valueFrom:
-              secretKeyRef:
-                key: database-user
-                name: mongodb
-          - name: MONGODB_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: database-password
-                name: mongodb
-          - name: DEBUG
-            value: "True"
-          - name: MONGODB_DATABASE
-            valueFrom:
-              secretKeyRef:
-                key: database-name
-                name: mongodb
           image: " "
           imagePullPolicy: Always
           name: api-service

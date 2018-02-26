@@ -7,10 +7,9 @@ name = "pypi"
 
 [packages]
 
-flask = "*"
+Flask = "*"
 flask-restplus = "*"
-prometheus-client = "*"
-pymongo = "*"
+prometheus_client = "*"
 openshift = "*"
 kubernetes = "*"
 

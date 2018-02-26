@@ -8,6 +8,8 @@ The "Dependency Monkey" is a service for validating of package dependencies with
 
 # Valiation
 
+The state of each Valiation is stored with it's corresponding Kubernetes Job.
+
 ## Phases
 
 * Pending: The Validation job has been accepted.
@@ -26,11 +28,7 @@ Travis-CI [![Build Status](https://travis-ci.org/goern/thoth-dependency-monkey.s
 
 ## Testdrive
 
-### Run MongoDB
-
-`docker run --name mongodb --rm -ti --publish 27017:27017 -e MONGODB_USER=mongo -e MONGODB_PASSWORD=mongo -e MONGODB_DATABASE=dev -e MONGODB_ADMIN_PASSWORD=mongo centos/mongodb-32-centos7`
-
-Start the API Service: `MONGODB_HOSTNAME=localhost DEBUG=True ./app.py`.
+Start the API Service: `DEBUG=True ./app.py`.
 
 ```bash
 curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"stack_specification":"string","ecosystem":"pypi"}' 'http://localhost:8080/api/v0alpha0/validations/'
