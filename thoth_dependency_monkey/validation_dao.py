@@ -21,12 +21,19 @@
 import os
 import logging
 import uuid
+import yaml
 
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId, InvalidId
 from werkzeug.exceptions import BadRequest, ServiceUnavailable
 from tempfile import NamedTemporaryFile
+from openshift import client, config
+from kubernetes import client as kclient
+from kubernetes.client import Configuration
+from kubernetes.client import api_client
+from kubernetes.client.apis import batch_v1_api
+
 
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
@@ -41,9 +48,11 @@ MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'dev')
 MONGODB_URL = 'mongodb://{}:{}@{}:{}/{}'.format(
     MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
 
-if DEBUG and MONGODB_HOSTNAME == 'localhost':
-    MONGODB_URL = 'mongodb://{}:{}/{}'.format(
-        MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
+# if DEBUG and MONGODB_HOSTNAME == 'localhost':
+#    MONGODB_URL = 'mongodb://{}:{}/{}'.format(
+#        MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
+
+THOTH_NAMESPACE = 'thoth-dev'
 
 logging.basicConfig()
 logger = logging.getLogger(__file__)
@@ -67,9 +76,33 @@ class NotFoundError(BadRequest):
 class ValidationDAO():
     def __init__(self):
         logger.debug('using MongoDB at {}'.format(MONGODB_URL))
-        self.mongo = MongoClient(MONGODB_URL)
 
         # TODO handle auth, think about reconnect etc
+        self.mongo = MongoClient(MONGODB_URL)
+
+        self.kconfig = Configuration()
+
+        # if we can read bearer token from /var/run/secrets/kubernetes.io/serviceaccount/token use it,
+        # otherwise use the one from env
+        try:
+            logger.debug(
+                'trying to get bearer token from secrets file within pod...')
+            with open('/var/run/secrets/kubernetes.io/serviceaccount/token') as f:
+                BEARER_TOKEN = f.read()
+
+                self.kconfig.api_key['authorization'] = 'Bearer {}'.format(
+                    BEARER_TOKEN)
+
+            self.kconfig.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+
+            # Load the "kubernetes" service items.
+            service_host = os.environ['KUBERNETES_SERVICE_HOST']
+            service_port = os.environ['KUBERNETES_SERVICE_PORT']
+            self.kconfig.host = 'https://{}:{}'.format(
+                service_host, service_port)
+
+        except:
+            logger.info("not running within an OpenShift cluster...")
 
     def get(self, id):
         try:
@@ -84,6 +117,11 @@ class ValidationDAO():
             raise NotFoundError(id)
 
         v['id'] = id
+
+        _job = self._get_scheduled_validation_job(id)
+
+        if 'succeeded' in _job.status.to_dict().keys():
+            v['phase'] = 'succeeded'
 
         return v
 
@@ -101,7 +139,7 @@ class ValidationDAO():
             raise BadRequest(
                 'specification is not valid within Ecosystem {}'.format(v['ecosystem']))
 
-        v['result_queue_name'] = self._get_result_location_name()
+        v['phase'] = 'pending'
 
         try:
             _v = self.mongo[MONGODB_DATABASE]['validations'].insert_one(v)
@@ -111,15 +149,15 @@ class ValidationDAO():
 
         v['id'] = _v.inserted_id
 
+        self._schedule_validation_job(v['id'])
+
         return v
 
     def delete(self, id):
         self.mongo[MONGODB_DATABASE]['validations'].remove(
             {"_id": ObjectId(id)})
 
-    def _get_result_location_name(self):
-        """This function will allocate a result Topic name with Kafka."""
-        return str(uuid.uuid4())
+        # TODO add kubernetes job stuff
 
     def _validate_requirements(self, spec):
         """This function will check if the syntax of the provided specification is valid"""
@@ -136,3 +174,69 @@ class ValidationDAO():
             return True
 
         return False
+
+    def _whats_my_name(self, id):
+        return 'validation-job-' + str(id)
+
+    def _schedule_validation_job(self, id):
+        logger.debug('scheduling validation id {}'.format(id))
+
+        config.load_kube_config()
+        _client = api_client.ApiClient()
+
+        _name = self._whats_my_name(id)
+        _job_manifest = {
+            'kind': 'Job',
+            'spec': {
+                'template':
+                    {'spec':
+                        {'containers': [
+                            {'image': 'busybox',
+                             'name': _name,
+                             'command': ["sh", "-c", "sleep 35"]
+                             }],
+                            'restartPolicy': 'Never'},
+                        'metadata': {'name': _name}}},
+            'apiVersion': 'batch/v1',
+            'metadata': {
+                    'name': _name,
+                    'labels': {
+                        'validation_id': str(id)
+                    }
+            }
+        }
+
+        _api = batch_v1_api.BatchV1Api(_client)
+
+        try:
+            _resp = _api.create_namespaced_job(
+                body=_job_manifest, namespace=THOTH_NAMESPACE)
+        except kclient.rest.ApiException as e:
+            logger.error(e)
+
+            raise ServiceUnavailable('OpenShift')
+
+    def _get_scheduled_validation_job(self, id):
+        logger.debug('looking for validation id {}'.format(id))
+
+        config.load_kube_config()
+        _client = api_client.ApiClient()
+
+        _api = batch_v1_api.BatchV1Api(_client)
+
+        try:
+            _resp = _api.list_namespaced_job(
+                namespace=THOTH_NAMESPACE, include_uninitialized=True, label_selector='validation_id='+str(id))
+
+            _job = _resp.items[0]
+
+            logger.debug(_job.status)
+
+            return _job
+
+        except kclient.rest.ApiException as e:
+            logger.error(e)
+
+            raise ServiceUnavailable('OpenShift')
+
+        return None

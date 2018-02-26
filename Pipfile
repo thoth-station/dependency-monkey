@@ -11,6 +11,8 @@ flask = "*"
 flask-restplus = "*"
 prometheus-client = "*"
 pymongo = "*"
+openshift = "*"
+kubernetes = "*"
 
 
 [dev-packages]
