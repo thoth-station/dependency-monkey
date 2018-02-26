@@ -29,6 +29,7 @@ from werkzeug.exceptions import BadRequest, ServiceUnavailable
 
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
+DEBUG = bool(os.getenv('DEBUG', False))
 
 MONGODB_USER = os.getenv('MONGODB_USER', 'mongo')
 MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD', 'mongo')
@@ -39,6 +40,9 @@ MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'dev')
 MONGODB_URL = 'mongodb://{}:{}@{}:{}/{}'.format(
     MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
 
+if DEBUG and MONGODB_HOSTNAME == 'localhost':
+    MONGODB_URL = 'mongodb://{}:{}/{}'.format(
+        MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
 
 logger = logging.getLogger(__file__)
 logger.setLevel(logging.DEBUG)
