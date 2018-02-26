@@ -26,6 +26,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId, InvalidId
 from werkzeug.exceptions import BadRequest, ServiceUnavailable
+from tempfile import NamedTemporaryFile
 
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
@@ -44,7 +45,9 @@ if DEBUG and MONGODB_HOSTNAME == 'localhost':
     MONGODB_URL = 'mongodb://{}:{}/{}'.format(
         MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
 
+logging.basicConfig()
 logger = logging.getLogger(__file__)
+
 logger.setLevel(logging.DEBUG)
 
 
@@ -63,10 +66,10 @@ class NotFoundError(BadRequest):
 
 class ValidationDAO():
     def __init__(self):
-        logger.info(MONGODB_URL)
+        logger.debug('using MongoDB at {}'.format(MONGODB_URL))
         self.mongo = MongoClient(MONGODB_URL)
 
-        # TODO handle
+        # TODO handle auth, think about reconnect etc
 
     def get(self, id):
         try:
@@ -93,14 +96,17 @@ class ValidationDAO():
         if v['ecosystem'] not in ECOSYSTEM:
             raise EcosystemNotSupportedError(v['ecosystem'])
 
-        # TODO check if stack_specification is valid
+        # check if stack_specification is valid
+        if not self._validate_requirements(v['stack_specification']):
+            raise BadRequest(
+                'specification is not valid within Ecosystem {}'.format(v['ecosystem']))
 
-        v['result_queue_name'] = self._get_result_queue_name()
+        v['result_queue_name'] = self._get_result_location_name()
 
         try:
             _v = self.mongo[MONGODB_DATABASE]['validations'].insert_one(v)
         except Exception as e:
-            # FIXME we should log here...
+            logger.error(e)
             raise ServiceUnavailable('database')
 
         v['id'] = _v.inserted_id
@@ -108,10 +114,25 @@ class ValidationDAO():
         return v
 
     def delete(self, id):
-        v = self.get(id)
-
         self.mongo[MONGODB_DATABASE]['validations'].remove(
             {"_id": ObjectId(id)})
 
-    def _get_result_queue_name(self):
+    def _get_result_location_name(self):
+        """This function will allocate a result Topic name with Kafka."""
         return str(uuid.uuid4())
+
+    def _validate_requirements(self, spec):
+        """This function will check if the syntax of the provided specification is valid"""
+        from pip.req.req_file import parse_requirements
+
+        # create a temporary file and store the spec there since
+        # `parse_requirements` requires a file
+        with NamedTemporaryFile(mode='w+', suffix='pysolve') as f:
+            f.write(spec)
+            f.flush()
+            reqs = parse_requirements(f.name, session=f.name)
+
+        if reqs:
+            return True
+
+        return False
