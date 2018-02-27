@@ -8,7 +8,7 @@ The "Dependency Monkey" is a service for validating of package dependencies with
 
 # Valiation
 
-The state of each Valiation is stored with it's corresponding Kubernetes Job.
+The state of each Valiation is stored with it's corresponding Kubernetes Job. Validation results will be available for a certain amount of time (data retention period).
 
 ## Phases
 

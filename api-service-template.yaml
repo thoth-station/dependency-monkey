@@ -53,3 +53,12 @@ objects:
           namespace: thoth-dev
       type: ImageChange
     - type: ConfigChange
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: api-service
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""

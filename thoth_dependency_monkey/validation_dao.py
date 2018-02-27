@@ -88,10 +88,16 @@ class ValidationDAO():
         for container in _job.spec.template.spec.containers:
             if container.name.endswith(str(id)):
                 for env in container.env:
-                    v[env.name] = env.value
+                    v[env.name.lower()] = env.value
 
         if _job.status.succeeded is not None:
             v['phase'] = 'succeeded'
+
+            log = self._get_job_log(id)
+
+            if log is not None:
+                v['raw_log'] = log
+
         elif _job.status.failed is not None:
             v['phase'] = 'failed'
         elif _job.status.active is not None:
@@ -144,26 +150,33 @@ class ValidationDAO():
     def _schedule_validation_job(self, id, spec, ecosystem):
         logger.debug('scheduling validation id {}'.format(id))
 
+        # FIXME there should be no hardcoded image name in here!
+
         _name = self._whats_my_name(id)
         _job_manifest = {
             'kind': 'Job',
             'spec': {
                 'template':
-                    {'spec':
+                    {
+                        'metadata': {'labels': {'validation-id': str(id)}},
+                        'spec':
                         {'serviceAccountName': 'validation-job-runner',
                          'containers': [
                              {
-                                 'image': 'busybox',
+                                 'image': '172.30.16.196:5000/thoth-dev/pypi-validator:latest',
                                  'name': _name,
-                                 'command': ["sh", "-c", "sleep 45"],
                                  'env': [
                                      {
-                                         'name': 'stack_specification',
-                                         'value': spec
+                                         'name': 'STACK_SPECIFICATION',
+                                         'value': spec.replace('\n', '\\n')
                                      },
                                      {
-                                         'name': 'ecosystem',
+                                         'name': 'ECOSYSTEM',
                                          'value': ecosystem
+                                     },
+                                     {
+                                         'name': 'XDG_CACHE_HOME',
+                                         'value': '/tmp/.xdg-cache'
                                      }
                                  ]
                              }
@@ -171,10 +184,15 @@ class ValidationDAO():
                             'restartPolicy': 'Never'},
                         'metadata': {'name': _name}}},
             'apiVersion': 'batch/v1',
-            'metadata': {'name': _name, 'labels': {'validation_id': str(id)}}
+            'metadata': {'name': _name, 'labels': {'validation-id': str(id)}}
         }
 
-        config.load_incluster_config()
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
         _client = client.CoreV1Api()
         _api = client.BatchV1Api()
 
@@ -192,13 +210,18 @@ class ValidationDAO():
     def _get_scheduled_validation_job(self, id):
         logger.debug('looking for validation id {}'.format(id))
 
-        config.load_incluster_config()
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
         _client = client.CoreV1Api()
         _api = client.BatchV1Api()
 
         try:
             _resp = _api.list_namespaced_job(
-                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE, include_uninitialized=True, label_selector='validation_id='+str(id))
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE, include_uninitialized=True, label_selector='validation-id='+str(id))
 
             if not _resp.items is None:
                 return _resp.items[0]
@@ -216,3 +239,39 @@ class ValidationDAO():
             return None
 
         return None
+
+    def _get_job_log(self, id):
+        logger.debug('getting logs for validation id {}'.format(id))
+
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
+        _client = client.CoreV1Api()
+
+        try:
+            # 1. lets get the pod that ran our job
+            _resp = _client.list_namespaced_pod(
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE)  # , label_selector='job-name=validation-id-'+str(id))
+
+            for pod in _resp.items:
+                if 'job-name' in pod.metadata.labels.keys():
+                    logger.debug('found a Validation Job: {}'.format(
+                        pod.metadata.labels['job-name']))
+
+                    # TODO this may be more than one Pod (because it failed or so...)
+                    if pod.metadata.labels['job-name'].endswith(str(id)):
+                        _log = _client.read_namespaced_pod_log(
+                            pod.metadata.name, namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE, pretty=True)
+
+                        return _log
+
+        except client.rest.ApiException as e:
+            logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
+            raise ServiceUnavailable('OpenShift')

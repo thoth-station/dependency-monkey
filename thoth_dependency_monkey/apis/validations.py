@@ -37,8 +37,8 @@ validation = ns.model('Validation', {
     'id': fields.String(required=True, readOnly=True, description='The Validation unique identifier'),
     'stack_specification': fields.String(required=True, readOnly=True,  description='Specification of the Software Stack'),
     'ecosystem': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated'),
-    'phase': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated')
-
+    'phase': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated'),
+    'raw_log': fields.String(readOnly=True, description='This is the raw log of the Validation job')
 })
 
 PHASE = ['pending', 'running', 'succeeded', 'failed', 'unknown']
@@ -52,6 +52,7 @@ DAO = ValidationDAO()
 class Validation(Resource):
     """Show or delete a single Validation"""
     @ns.doc('get_validation')
+    # FIXME we should , skip_none=True once it is release
     @ns.marshal_with(validation)
     def get(self, id):
         """Show a given Validation"""
