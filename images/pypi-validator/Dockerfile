@@ -11,7 +11,10 @@ LABEL io.k8s.description="Thoth Dependency Monkey Validator for Pypi" \
 WORKDIR /opt/app-root/src
 
 RUN pip3 install --upgrade pip && \
-    pip3 install pip-tools thoth-analyzer
+    pip3 install pip-tools thoth-analyzer && \
+    chown 1001:1001 -R /opt/app-root/src
+
+USER 1001
 
 COPY validate /opt/app-root/src
 
