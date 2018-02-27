@@ -28,13 +28,20 @@ from thoth_dependency_monkey.ecosystem import ECOSYSTEM, EcosystemNotSupportedEr
 
 ns = Namespace('validations', description='Validations')
 
-validation = ns.model('Validation', {
-    'id': fields.String(required=True, readOnly=True, description='The Validation unique identifier'),
+validation_request = ns.model('ValidationRequest', {
     'stack_specification': fields.String(required=True, description='Specification of the Software Stack'),
-    'ecosystem': fields.String(required=True, default='pypi', description='In which ecosystem is the stack specification to be validated'),
-    'result_queue_name': fields.String(description='The name of the Kafka queue containing the result of the Validation.')
+    'ecosystem': fields.String(required=True, default='pypi', description='In which ecosystem is the stack specification to be validated')
 })
 
+validation = ns.model('Validation', {
+    'id': fields.String(required=True, readOnly=True, description='The Validation unique identifier'),
+    'stack_specification': fields.String(required=True, readOnly=True,  description='Specification of the Software Stack'),
+    'ecosystem': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated'),
+    'phase': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated')
+
+})
+
+PHASE = ['pending', 'running', 'succeeded', 'failed', 'unknown']
 
 DAO = ValidationDAO()
 
@@ -43,11 +50,11 @@ DAO = ValidationDAO()
 @ns.response(404, 'Validation not found')
 @ns.param('id', 'The Validation identifier')
 class Validation(Resource):
-    """Show a single Validation and lets you delete them"""
+    """Show or delete a single Validation"""
     @ns.doc('get_validation')
     @ns.marshal_with(validation)
     def get(self, id):
-        """Fetch a given Validation"""
+        """Show a given Validation"""
 
         v = None
 
@@ -73,9 +80,9 @@ class Validation(Resource):
 
 @ns.route('/')
 class ValidationList(Resource):
-    """Shows a list of all Validations, and let's you request a new Validation"""
+    """Request a new Validation"""
     @ns.doc('request_validation')
-    @ns.expect(validation)
+    @ns.expect(validation_request)
     @ns.marshal_with(validation, code=201)
     @ns.response(503, 'Service we depend on is not available')
     @ns.response(400, 'Ecosystem not supported')
@@ -84,6 +91,7 @@ class ValidationList(Resource):
         """Request a new Validation"""
 
         try:
+            # TODO check if we need to better safe guard this
             v = DAO.create(request.get_json())
         except EcosystemNotSupportedError as err:
             ns.abort(400, str(err))

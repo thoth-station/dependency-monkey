@@ -7,10 +7,12 @@ name = "pypi"
 
 [packages]
 
-flask = "*"
+Flask = "*"
 flask-restplus = "*"
-prometheus-client = "*"
-pymongo = "*"
+prometheus_client = "*"
+'ruamel.yaml' = "<=0.15"
+openshift = "*"
+kubernetes = "*"
 
 
 [dev-packages]
