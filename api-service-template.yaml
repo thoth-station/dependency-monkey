@@ -33,6 +33,7 @@ objects:
           app: dependency-monkey
           deploymentconfig: api-service
       spec:
+        serviceAccountName:  validation-job-runner
         containers:
           image: " "
           imagePullPolicy: Always

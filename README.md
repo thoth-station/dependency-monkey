@@ -22,6 +22,19 @@ The state of each Valiation is stored with it's corresponding Kubernetes Job.
 
 * Unknown: For some reason the state of the Validation job could not be obtained.
 
+# Deployment
+
+```bash
+oc create sa validation-job-runner
+oc policy add-role-to-user view -z validation-job-runner
+oc policy add-role-to-user edit -z validation-job-runner
+
+oc create -f api-service-imageStream.yaml
+oc create -f api-service-buildConfig.yaml
+
+oc process -f api-service-template.yaml | oc create -f -
+```
+
 # Badges
 
 Travis-CI [![Build Status](https://travis-ci.org/goern/thoth-dependency-monkey.svg?branch=master)](https://travis-ci.org/goern/thoth-dependency-monkey)

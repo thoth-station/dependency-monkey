@@ -24,9 +24,7 @@ import uuid
 
 from werkzeug.exceptions import BadRequest, ServiceUnavailable
 from tempfile import NamedTemporaryFile
-from openshift import client, config
-from kubernetes import client as kclient
-from kubernetes.client import Configuration
+from kubernetes import client, config
 from kubernetes.client import api_client
 from kubernetes.client.apis import batch_v1_api
 
@@ -35,7 +33,9 @@ from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
 DEBUG = bool(os.getenv('DEBUG', False))
 
-THOTH_NAMESPACE = 'thoth-dev'
+KUBERNETES_API_URL = os.getenv(
+    'KUBERNETES_API_URL', 'https://kubernetes.default.svc.cluster.local:443')
+THOTH_DEPENDENCY_MONKEY_NAMESPACE = 'thoth-dev'
 
 logging.basicConfig()
 logger = logging.getLogger(__file__)
@@ -58,7 +58,7 @@ class NotFoundError(BadRequest):
 
 class ValidationDAO():
     def __init__(self):
-        self.kconfig = Configuration()
+        self.BEARER_TOKEN = None
 
         # if we can read bearer token from /var/run/secrets/kubernetes.io/serviceaccount/token use it,
         # otherwise use the one from env
@@ -66,18 +66,9 @@ class ValidationDAO():
             logger.debug(
                 'trying to get bearer token from secrets file within pod...')
             with open('/var/run/secrets/kubernetes.io/serviceaccount/token') as f:
-                BEARER_TOKEN = f.read()
+                self.BEARER_TOKEN = f.read()
 
-                self.kconfig.api_key['authorization'] = 'Bearer {}'.format(
-                    BEARER_TOKEN)
-
-            self.kconfig.ssl_ca_cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
-
-            # Load the "kubernetes" service items.
-            service_host = os.environ['KUBERNETES_SERVICE_HOST']
-            service_port = os.environ['KUBERNETES_SERVICE_PORT']
-            self.kconfig.host = 'https://{}:{}'.format(
-                service_host, service_port)
+            self.SSL_CA_CERT_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
 
         except:
             logger.info("not running within an OpenShift cluster...")
@@ -88,6 +79,10 @@ class ValidationDAO():
         v['id'] = id
 
         _job = self._get_scheduled_validation_job(id)
+
+        # if we didnt get back anything from OpenShift, we let it 404
+        if _job is None:
+            raise NotFoundError(id)
 
         # lets copy the Validation information from the Kubernetes Job
         for container in _job.spec.template.spec.containers:
@@ -149,65 +144,75 @@ class ValidationDAO():
     def _schedule_validation_job(self, id, spec, ecosystem):
         logger.debug('scheduling validation id {}'.format(id))
 
-        config.load_kube_config()
-        _client = api_client.ApiClient()
-
         _name = self._whats_my_name(id)
         _job_manifest = {
             'kind': 'Job',
             'spec': {
                 'template':
                     {'spec':
-                        {'containers': [
-                            {
-                                'image': 'busybox',
-                                'name': _name,
-                                'command': ["sh", "-c", "sleep 45"],
-                                'env': [
-                                    {
-                                        'name': 'stack_specification',
-                                        'value': spec
-                                    },
-                                    {
-                                        'name': 'ecosystem',
-                                        'value': ecosystem
-                                    }
-                                ]
-                            }
-                        ],
+                        {'serviceAccountName': 'validation-job-runner',
+                         'containers': [
+                             {
+                                 'image': 'busybox',
+                                 'name': _name,
+                                 'command': ["sh", "-c", "sleep 45"],
+                                 'env': [
+                                     {
+                                         'name': 'stack_specification',
+                                         'value': spec
+                                     },
+                                     {
+                                         'name': 'ecosystem',
+                                         'value': ecosystem
+                                     }
+                                 ]
+                             }
+                         ],
                             'restartPolicy': 'Never'},
                         'metadata': {'name': _name}}},
             'apiVersion': 'batch/v1',
             'metadata': {'name': _name, 'labels': {'validation_id': str(id)}}
         }
 
-        _api = batch_v1_api.BatchV1Api(_client)
+        config.load_incluster_config()
+        _client = client.CoreV1Api()
+        _api = client.BatchV1Api()
 
         try:
             _resp = _api.create_namespaced_job(
-                body=_job_manifest, namespace=THOTH_NAMESPACE)
-        except kclient.rest.ApiException as e:
+                body=_job_manifest, namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE)
+        except client.rest.ApiException as e:
             logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
 
             raise ServiceUnavailable('OpenShift')
 
     def _get_scheduled_validation_job(self, id):
         logger.debug('looking for validation id {}'.format(id))
 
-        config.load_kube_config()
-        _client = api_client.ApiClient()
-
-        _api = batch_v1_api.BatchV1Api(_client)
+        config.load_incluster_config()
+        _client = client.CoreV1Api()
+        _api = client.BatchV1Api()
 
         try:
             _resp = _api.list_namespaced_job(
-                namespace=THOTH_NAMESPACE, include_uninitialized=True, label_selector='validation_id='+str(id))
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE, include_uninitialized=True, label_selector='validation_id='+str(id))
 
-            return _resp.items[0]
-
-        except kclient.rest.ApiException as e:
+            if not _resp.items is None:
+                return _resp.items[0]
+        except client.rest.ApiException as e:
             logger.error(e)
 
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
             raise ServiceUnavailable('OpenShift')
+
+        except IndexError as e:
+            logger.debug('we got no jobs...')
+
+            return None
 
         return None
