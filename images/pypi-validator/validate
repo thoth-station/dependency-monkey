@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#   thoth-dependency-monkey
+#   Copyright(C) 2018 Christoph Görn
+#
+#   This program is free software: you can redistribute it and / or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Thoth: Dependency Monkey Pypi Validator"""
+
+
+import os
+import logging
+
+from tempfile import NamedTemporaryFile
+
+from thoth.analyzer import run_command, CommandError
+
+
+__version__ = '0.1.0-dev'
+
+
+DEBUG = bool(os.getenv('DEBUG', False))
+
+STACK_SPECIFICATION = os.getenv('STACK_SPECIFICATION', None)
+ECOSYSTEM = os.getenv('ECOSYSTEM', None)
+
+
+logging.basicConfig()
+logger = logging.getLogger(__file__)
+
+logger.setLevel(logging.DEBUG)
+
+logger.info(
+    'Thoth Dependency Monkey Pypi Validator v{} statring up...'.format(__version__))
+
+if STACK_SPECIFICATION is None:
+    logger.error('No stack_specification provided, halting!')
+    exit(-1)
+
+if ECOSYSTEM is None:
+    logger.error('No ecosystem provided, halting!')
+    exit(-2)
+
+ECOSYSTEM = str(ECOSYSTEM).lower()
+
+if ECOSYSTEM != 'pypi':
+    logger.error('Ecosystem is nost Pypi, halting!')
+
+
+# TODO we do no sanitiy checks on the stack_specification
+
+with NamedTemporaryFile(mode='w+', prefix='tdm-') as f:
+    logger.debug(
+        'writing stack_specification to temparary file: {}'.format(f.name))
+    f.write(STACK_SPECIFICATION)
+    f.flush()
+
+    try:
+        result = run_command('pip-compile {}'.format(f.name))
+        print(result.stdout)
+    except CommandError as e:
+        logger.error(e)
+        exit(-3)
+
+
+# end.
