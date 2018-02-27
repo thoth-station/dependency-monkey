@@ -1,3 +1,3 @@
-# Pypi Validator
+# PyPI Validator
 
-This Validator will resolve Pypi modules using `pip-compile`.
+This Validator will resolve PyPI modules using `pip-compile`.

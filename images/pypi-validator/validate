@@ -16,7 +16,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Thoth: Dependency Monkey Pypi Validator"""
+"""Thoth: Dependency Monkey PyPI Validator"""
 
 
 import os
@@ -42,7 +42,7 @@ logger = logging.getLogger(__file__)
 logger.setLevel(logging.DEBUG)
 
 logger.info(
-    'Thoth Dependency Monkey Pypi Validator v{} statring up...'.format(__version__))
+    'Thoth Dependency Monkey PyPI Validator v{} statring up...'.format(__version__))
 
 if STACK_SPECIFICATION is None:
     logger.error('No stack_specification provided, halting!')
@@ -55,19 +55,20 @@ if ECOSYSTEM is None:
 ECOSYSTEM = str(ECOSYSTEM).lower()
 
 if ECOSYSTEM != 'pypi':
-    logger.error('Ecosystem is nost Pypi, halting!')
+    logger.error('Ecosystem is not PyPI, halting!')
 
 
 # TODO we do no sanitiy checks on the stack_specification
 
-with NamedTemporaryFile(mode='w+', prefix='tdm-') as f:
+with NamedTemporaryFile(mode='w+', prefix='tdm-pypi-validation-', delete=False) as f:
     logger.debug(
         'writing stack_specification to temparary file: {}'.format(f.name))
-    f.write(STACK_SPECIFICATION)
+    f.write(STACK_SPECIFICATION.replace('\\n', '\n'))
     f.flush()
 
     try:
-        result = run_command('pip-compile {}'.format(f.name))
+        result = run_command(
+            'pip-compile --verbose --rebuild --annotate --output-file=/tmp/validated-requirements.txt {}'.format(f.name))
         print(result.stdout)
     except CommandError as e:
         logger.error(e)
