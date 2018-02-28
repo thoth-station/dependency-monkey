@@ -21,10 +21,12 @@
 
 import os
 import logging
+import shlex
 
 from tempfile import NamedTemporaryFile
-
-from thoth.analyzer import run_command, CommandError
+from pip.exceptions import DistributionNotFound
+from piptools.scripts.compile import cli as pipcompile
+from click.testing import CliRunner
 
 
 __version__ = '0.1.0-dev'
@@ -39,9 +41,10 @@ ECOSYSTEM = os.getenv('ECOSYSTEM', None)
 logging.basicConfig()
 logger = logging.getLogger(__file__)
 
-logger.setLevel(logging.DEBUG)
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
 
-logger.info(
+logger.debug(
     'Thoth Dependency Monkey PyPI Validator v{} statring up...'.format(__version__))
 
 if STACK_SPECIFICATION is None:
@@ -67,12 +70,22 @@ with NamedTemporaryFile(mode='w+', prefix='tdm-pypi-validation-', delete=False) 
     f.flush()
 
     try:
-        result = run_command(
-            'pip-compile --verbose --rebuild --annotate --output-file=/tmp/validated-requirements.txt {}'.format(f.name))
-        print(result.stdout)
-    except CommandError as e:
+        runner = CliRunner()
+        result = runner.invoke(pipcompile,
+                               ['--annotate', '--verbose', '--output-file', '{}-requirements.txt'.format(f.name), f.name], catch_exceptions=False)
+
+        logger.debug(result)
+
+        with open('{}-requirements.txt'.format(f.name)) as file:
+            result = file.read()
+
+            print(result)
+
+    except FileNotFoundError as e:
         logger.error(e)
-        exit(-3)
+
+    except DistributionNotFound as e:
+        logger.error(e)
 
 
 # end.
