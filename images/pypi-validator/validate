@@ -76,16 +76,25 @@ with NamedTemporaryFile(mode='w+', prefix='tdm-pypi-validation-', delete=False) 
 
         logger.debug(result)
 
-        with open('{}-requirements.txt'.format(f.name)) as file:
-            result = file.read()
+        # FIXME if pip-compile cant find a package it is errno=2 too
+        if result.exit_code == 2:
+            logger.debug("pip-compile did fail: {}".format(result))
+            print('The Software Stack Specification could not be validated, most probably a syntax error in the spec!')
 
-            print(result)
+        else:
+            with open('{}-requirements.txt'.format(f.name)) as file:
+                result = file.read()
+
+                print(result)
+
+    # TODO what if pod is cut off from internet?
+    # TODO how to configure companies own pypi index?
 
     except FileNotFoundError as e:
         logger.error(e)
 
     except DistributionNotFound as e:
         logger.error(e)
-
+        print('The Software Stack Specification could not be validated, one package and the specified version could not be found !')
 
 # end.

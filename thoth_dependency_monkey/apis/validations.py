@@ -38,10 +38,13 @@ validation = ns.model('Validation', {
     'stack_specification': fields.String(required=True, readOnly=True,  description='Specification of the Software Stack'),
     'ecosystem': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated'),
     'phase': fields.String(required=True, readOnly=True,  description='In which ecosystem is the stack specification to be validated'),
-    'raw_log': fields.String(readOnly=True, description='This is the raw log of the Validation job')
+    'raw_log': fields.String(readOnly=True, description='This is the raw log of the Validation job'),
+    'valid': fields.Boolean(readOnly=True, description='This indicates that the Validation is valid')
 })
 
 PHASE = ['pending', 'running', 'succeeded', 'failed', 'unknown']
+VALIDITY = ['valid', 'invalid']
+FAILURE_REASON = ['spec_parse_error']
 
 DAO = ValidationDAO()
 

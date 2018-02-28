@@ -77,6 +77,7 @@ class ValidationDAO():
         v = {}
 
         v['id'] = id
+        v['valid'] = True
 
         _job = self._get_scheduled_validation_job(id)
 
@@ -97,6 +98,10 @@ class ValidationDAO():
 
             if log is not None:
                 v['raw_log'] = log
+
+                # TODO pretty sure we can do this better
+                if 'No matching distribution found' in log:
+                    v['valid'] = False
 
         elif _job.status.failed is not None:
             v['phase'] = 'failed'
