@@ -169,7 +169,7 @@ class ValidationDAO():
                         {'serviceAccountName': 'validation-job-runner',
                          'containers': [
                              {
-                                 'image': '172.30.16.196:5000/thoth-dev/pypi-validator:latest',
+                                 'image': 'docker-registry.default.svc.cluster.local:5000/{}/pypi-validator:latest'.format(THOTH_DEPENDENCY_MONKEY_NAMESPACE),
                                  'name': _name,
                                  'env': [
                                      {
