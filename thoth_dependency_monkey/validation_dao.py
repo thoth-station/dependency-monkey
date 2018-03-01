@@ -35,7 +35,8 @@ DEBUG = bool(os.getenv('DEBUG', False))
 
 KUBERNETES_API_URL = os.getenv(
     'KUBERNETES_API_URL', 'https://kubernetes.default.svc.cluster.local:443')
-THOTH_DEPENDENCY_MONKEY_NAMESPACE = 'thoth-dev'
+THOTH_DEPENDENCY_MONKEY_NAMESPACE = os.getenv(
+    'THOTH_DEPENDENCY_MONKEY_NAMESPACE', 'thoth-dev')
 
 logging.basicConfig()
 logger = logging.getLogger(__file__)
