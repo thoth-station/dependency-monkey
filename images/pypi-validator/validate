@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#   thoth-dependency-monkey
+#   Copyright(C) 2018 Christoph Görn
+#
+#   This program is free software: you can redistribute it and / or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Thoth: Dependency Monkey PyPI Validator"""
+
+
+import os
+import logging
+import shlex
+
+from tempfile import NamedTemporaryFile
+from pip.exceptions import DistributionNotFound
+from piptools.scripts.compile import cli as pipcompile
+from click.testing import CliRunner
+
+
+__version__ = '0.1.0-dev'
+
+
+DEBUG = bool(os.getenv('DEBUG', False))
+
+STACK_SPECIFICATION = os.getenv('STACK_SPECIFICATION', None)
+ECOSYSTEM = os.getenv('ECOSYSTEM', None)
+
+
+logging.basicConfig()
+logger = logging.getLogger(__file__)
+
+if DEBUG:
+    logger.setLevel(logging.DEBUG)
+
+logger.debug(
+    'Thoth Dependency Monkey PyPI Validator v{} statring up...'.format(__version__))
+
+if STACK_SPECIFICATION is None:
+    logger.error('No stack_specification provided, halting!')
+    exit(-1)
+
+if ECOSYSTEM is None:
+    logger.error('No ecosystem provided, halting!')
+    exit(-2)
+
+ECOSYSTEM = str(ECOSYSTEM).lower()
+
+if ECOSYSTEM != 'pypi':
+    logger.error('Ecosystem is not PyPI, halting!')
+
+
+# TODO we do no sanitiy checks on the stack_specification
+
+with NamedTemporaryFile(mode='w+', prefix='tdm-pypi-validation-', delete=False) as f:
+    logger.debug(
+        'writing stack_specification to temparary file: {}'.format(f.name))
+    f.write(STACK_SPECIFICATION.replace('\\n', '\n'))
+    f.flush()
+
+    try:
+        runner = CliRunner()
+        result = runner.invoke(pipcompile,
+                               ['--annotate', '--verbose', '--output-file', '{}-requirements.txt'.format(f.name), f.name], catch_exceptions=False)
+
+        logger.debug(result)
+
+        # FIXME if pip-compile cant find a package it is errno=2 too
+        if result.exit_code == 2:
+            logger.debug("pip-compile did fail: {}".format(result))
+            print('The Software Stack Specification could not be validated, most probably a syntax error in the spec!')
+
+        else:
+            with open('{}-requirements.txt'.format(f.name)) as file:
+                result = file.read()
+
+                print(result)
+
+    # TODO what if pod is cut off from internet?
+    # TODO how to configure companies own pypi index?
+
+    except FileNotFoundError as e:
+        logger.error(e)
+
+    except DistributionNotFound as e:
+        logger.error(e)
+        print('The Software Stack Specification could not be validated, one package and the specified version could not be found !')
+
+# end.

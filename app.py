@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#   thoth-dependency-monkey 
+#   thoth-dependency-monkey
 #   Copyright(C) 2018 Christoph Görn
 #
 #   This program is free software: you can redistribute it and / or modify
@@ -41,8 +41,7 @@ FLASK_REQUEST_COUNT = Counter('flask_request_count', 'Flask Request Count',
 DEBUG = bool(os.getenv('DEBUG', False))
 
 if DEBUG:
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s,%(levelname)s,%(filename)s:%(lineno)d,%(message)s')
+    logging.basicConfig(level=logging.DEBUG)
 else:
     logging.basicConfig(level=logging.INFO)
 

@@ -13,6 +13,7 @@ tagMap = [:]
 
 // Initialize
 tagMap['thoth-dependency-monkey'] = '0.1.0-dev'
+tagMap['pypi-validator'] = '0.1.0-dev'
 
 // IRC properties
 IRC_NICK = "ai-coe-bot"
@@ -92,7 +93,11 @@ pipeline {
                             tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "api-service", '0.1.0-dev')
                         }
 
-                    }          
+                        echo "Building PyPI Validator container image..."
+                        script {
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "pypi-validator", '0.1.0-dev')
+                        }
+                    }   
                 } 
             }
         }

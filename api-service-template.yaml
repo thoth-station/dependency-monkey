@@ -26,6 +26,7 @@ objects:
   spec:
     replicas: 1
     selector:
+      app: dependency-monkey
       deploymentconfig: api-service
     template:
       metadata:
@@ -33,16 +34,22 @@ objects:
           app: dependency-monkey
           deploymentconfig: api-service
       spec:
-        serviceAccountName:  validation-job-runner
         containers:
+        - name: api-service
           image: " "
           imagePullPolicy: Always
-          name: api-service
+          serviceAccountName: validation-job-runner
           ports:
           - containerPort: 8080
             protocol: TCP
+          env:
+          - name: THOTH_DEPENDENCY_MONKEY_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
     test: false
     triggers:
+    - type: ConfigChange
     - imageChangeParams:
         automatic: true
         containerNames:
@@ -50,6 +57,14 @@ objects:
         from:
           kind: ImageStreamTag
           name: api-service:latest
-          namespace: thoth-dev
+          namespace: ai-coe
       type: ImageChange
-    - type: ConfigChange
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: api-service
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""
