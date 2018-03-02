@@ -2,6 +2,21 @@ apiVersion: v1
 kind: Template
 metadata:
   name: api-service
+  annotations:
+    description: This is Thoth Dependency Monkey, it validates package dependencies in software stacks.
+    openshift.io/display-name: Dependency Monkey
+    tags: thoth,dependency_monkey, dependencymonkey, poc
+    template.openshift.io/documentation-url: https://github.com/AICoE/thoth-dependency-monkey/
+    template.openshift.io/long-description: This template defines resources needed
+      to deploy Thoth Dependency Monkey as a Proof-of-Concept to OpenShift.
+    template.openshift.io/provider-display-name: Red Hat, Inc.
+message: |-
+  For more information about using this template see https://github.com/AICoE/thoth-dependency-monkey/
+
+  You should be able to access .../openapi/ now.
+
+  Have Fun!
+  
 objects:
 - apiVersion: v1
   kind: Service

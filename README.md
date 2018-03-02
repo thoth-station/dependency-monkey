@@ -25,6 +25,8 @@ The state of each Valiation is stored with it's corresponding Kubernetes Job. Va
 # Deployment
 
 ```bash
+oc new-project thoth-dev
+
 oc create sa validation-job-runner
 oc policy add-role-to-user view -z validation-job-runner
 oc policy add-role-to-user edit -z validation-job-runner

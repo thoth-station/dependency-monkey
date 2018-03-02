@@ -9,7 +9,7 @@ objects:
     name: pypi-validator
   spec:
     lookupPolicy:
-      local: false
+      local: true
   status:
     dockerImageRepository: ""
 - kind: BuildConfig

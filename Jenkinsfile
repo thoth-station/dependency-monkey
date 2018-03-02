@@ -90,12 +90,12 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "api-service", '0.1.0')
+                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "api-service", '0.1.1')
                         }
 
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "pypi-validator", '0.1.0')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "pypi-validator", '0.1.1')
                         }
                     }   
                 } 
