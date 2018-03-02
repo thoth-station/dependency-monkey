@@ -31,7 +31,6 @@ oc create sa validation-job-runner
 oc policy add-role-to-user view -z validation-job-runner
 oc policy add-role-to-user edit -z validation-job-runner
 
-oc create -f api-service-imageStream.yaml
 oc create -f api-service-buildConfig.yaml
 
 oc process -f api-service-template.yaml | oc create -f -

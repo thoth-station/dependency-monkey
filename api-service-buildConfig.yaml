@@ -14,8 +14,8 @@ spec:
   runPolicy: Serial
   source:
     git:
-      ref: feature/pymongo
-      uri: https://github.com/goern/thoth-dependency-monkey
+      ref: master
+      uri: https://github.com/AICoE/thoth-dependency-monkey
     type: Git
   strategy:
     sourceStrategy:
