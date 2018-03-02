@@ -79,7 +79,6 @@ class ValidationDAO():
         v = {}
 
         v['id'] = id
-        v['valid'] = True
 
         _job = self._get_scheduled_validation_job(id)
 
@@ -106,6 +105,8 @@ class ValidationDAO():
                     v['valid'] = False
                 if 'The Software Stack Specification could not be validated, most probably a syntax error in the spec!' in log:
                     v['valid'] = False
+                else:
+                    v['valid'] = True
 
         elif _job.status.failed is not None:
             v['phase'] = 'failed'
@@ -178,9 +179,10 @@ class ValidationDAO():
     def _schedule_validation_job(self, id, spec, ecosystem):
         logger.debug('scheduling validation id {}'.format(id))
 
-        # FIXME there should be no hardcoded image name in here!
-
         _name = self._whats_my_name(id)
+        # TODO select validator image based on ecosystem
+        # _image = self._job_image_name(ecosystem)
+
         _job_manifest = {
             'kind': 'Job',
             'spec': {
@@ -191,7 +193,7 @@ class ValidationDAO():
                         {'serviceAccountName': 'validation-job-runner',
                          'containers': [
                              {
-                                 'image': 'docker-registry.default.svc.cluster.local:5000/{}/pypi-validator:latest'.format(THOTH_DEPENDENCY_MONKEY_NAMESPACE),
+                                 'image': 'pypi-validator',
                                  'name': _name,
                                  'env': [
                                      {

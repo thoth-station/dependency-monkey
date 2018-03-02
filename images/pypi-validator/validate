@@ -29,7 +29,7 @@ from piptools.scripts.compile import cli as pipcompile
 from click.testing import CliRunner
 
 
-__version__ = '0.1.0-dev'
+__version__ = '0.1.1'
 
 
 DEBUG = bool(os.getenv('DEBUG', False))
