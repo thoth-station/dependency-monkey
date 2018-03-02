@@ -35,15 +35,16 @@ oc create -f api-service-buildConfig.yaml
 oc process -f api-service-template.yaml | oc create -f -
 ```
 
-# Badges
+# Continous Integration
 
-Travis-CI [![Build Status](https://travis-ci.org/goern/thoth-dependency-monkey.svg?branch=master)](https://travis-ci.org/goern/thoth-dependency-monkey)
+A CI pipeline is hosted on CentOS CI infrastructure: [thoth-dependency-monkey](https://jenkins-ai-coe.apps.ci.centos.org/blue/organizations/jenkins/thoth-dependency-monkey/branches)
 
 ## Testdrive
 
 Start the API Service: `DEBUG=True ./app.py`.
 
 ```bash
-curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"stack_specification":"string","ecosystem":"pypi"}' 'http://localhost:8080/api/v0alpha0/validations/'
+curl -X POST --header 'Content-Type: application/json' --header 'Accept: application/json' -d '{"stack_specification":"pandas","ecosystem":"pypi"}' 'http://localhost:8080/api/v0alpha0/validations/'
+
 curl -X GET --header 'Accept: application/json' 'http://localhost:8080/api/v0alpha0/validations/<ID>'
 ```
