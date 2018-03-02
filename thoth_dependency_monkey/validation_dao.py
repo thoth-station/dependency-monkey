@@ -22,7 +22,7 @@ import os
 import logging
 import uuid
 
-from werkzeug.exceptions import BadRequest, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, ServiceUnavailable, NotImplemented
 from tempfile import NamedTemporaryFile
 from kubernetes import client, config
 from kubernetes.client import api_client
@@ -37,6 +37,7 @@ KUBERNETES_API_URL = os.getenv(
     'KUBERNETES_API_URL', 'https://kubernetes.default.svc.cluster.local:443')
 THOTH_DEPENDENCY_MONKEY_NAMESPACE = os.getenv(
     'THOTH_DEPENDENCY_MONKEY_NAMESPACE', 'thoth-dev')
+VALIDATION_JOB_PREFIX = 'validation-job-'
 
 logging.basicConfig()
 logger = logging.getLogger(__file__)
@@ -103,6 +104,8 @@ class ValidationDAO():
                 # TODO pretty sure we can do this better
                 if 'No matching distribution found' in log:
                     v['valid'] = False
+                if 'The Software Stack Specification could not be validated, most probably a syntax error in the spec!' in log:
+                    v['valid'] = False
 
         elif _job.status.failed is not None:
             v['phase'] = 'failed'
@@ -110,6 +113,25 @@ class ValidationDAO():
             v['phase'] = 'running'
 
         return v
+
+    def get_all(self):
+        jobs = self._get_all_scheduled_validation_job()
+
+        if len(jobs) > 0:
+            result = []
+
+            for job in jobs:
+                if job.metadata.name.startswith(VALIDATION_JOB_PREFIX):
+                    v = {}
+                    v['id'] = str(job.metadata.labels['validation-id'])
+
+                    result.append(
+                        {'id': str(job.metadata.labels['validation-id'])})
+
+            logger.debug('found the following validations: {}'.format(result))
+            return result
+        else:
+            return []
 
     def create(self, data):
         v = data
@@ -132,7 +154,7 @@ class ValidationDAO():
 
     def delete(self, id):
         # TODO add kubernetes job stuff
-        pass
+        raise NotImplemented()  # pylint: disable=E0711
 
     def _validate_requirements(self, spec):
         """This function will check if the syntax of the provided specification is valid"""
@@ -151,7 +173,7 @@ class ValidationDAO():
         return False
 
     def _whats_my_name(self, id):
-        return 'validation-job-' + str(id)
+        return VALIDATION_JOB_PREFIX + str(id)
 
     def _schedule_validation_job(self, id, spec, ecosystem):
         logger.debug('scheduling validation id {}'.format(id))
@@ -183,6 +205,10 @@ class ValidationDAO():
                                      {
                                          'name': 'XDG_CACHE_HOME',
                                          'value': '/tmp/.xdg-cache'
+                                     },
+                                     {
+                                         'name': 'DEBUG',
+                                         'value': 'YES'
                                      }
                                  ]
                              }
@@ -212,6 +238,45 @@ class ValidationDAO():
                 raise ServiceUnavailable('OpenShift auth failed')
 
             raise ServiceUnavailable('OpenShift')
+
+    def _get_all_scheduled_validation_job(self):
+        logger.debug('looking for all validations')
+
+        result = []
+
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
+        _client = client.CoreV1Api()
+        _api = client.BatchV1Api()
+
+        try:
+            _resp = _api.list_namespaced_job(
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE)
+
+            # if we got a none empty list of jobs, lets filter the ones out that belong to us...
+            if not _resp.items is None:
+                for job in _resp.items:
+                    if job.metadata.name.startswith(VALIDATION_JOB_PREFIX):
+                        result.append(job)
+
+        except client.rest.ApiException as e:
+            logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
+            raise ServiceUnavailable('OpenShift')
+
+        except IndexError as e:
+            logger.debug('we got no jobs...')
+
+            return []
+
+        return result
 
     def _get_scheduled_validation_job(self, id):
         logger.debug('looking for validation id {}'.format(id))
