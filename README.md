@@ -4,7 +4,50 @@ The "Dependency Monkey" is a service for validating of package dependencies with
 
 ![The Dependency Monkey](graphics/dependency_monkey.png)
 
+# An Example
+
+Right now the dependency monkey is capable of validating Python requirements/software stacks: if you ask him to 'validate pandas and numpy and six' it will tell you if this software stack is valid or not. The API will also return a resolved and locked dependency list, always defaulting to the latest version of each package.
+
+Let's take a look at the workflow: first of all we request a new Validation, note that package specifications are delimited by newlines!
+
+```bash
+curl -X POST --header 'Content-Type: application/json' \
+     --header 'Accept: application/json' \
+     -d '{"ecosystem":"pypi","stack_specification":"pandas\\nnumpy>=1.11.0"}' \
+     http://api-service-thoth-dev.1d35.starter-us-east-1.openshiftapps.com/api/v0alpha0/validations/
+```
+
+This will return an (pretty empty) object:
+
+```javascript
+Validation {
+ stack_specification (string): Specification of the Software Stack ,
+ valid (boolean, optional): This indicates that the Validation is valid ,
+ raw_log (string, optional): This is the raw log of the Validation job ,
+ ecosystem (string): Ecosystem the stack specification will be validated,
+ id (string): The Validation unique identifier ,
+ phase (string): Phase of the Validation job: [pending, running, succeeded, failed]
+}
+```
+
+Take note of the ID, we will need it for subsequent requests. You will also see that 'valid' is still null, as the Validation has not finished. In the background an OpenShift Job is scheduled to use a specific image to validate the software stack.
+
+As we are keen what the progress is, we can use
+
+```bash
+curl -X GET --header 'Accept: application/json' \
+     http://api-service-thoth-dev.1d35.starter-us-east-1.openshiftapps.com/api/v0alpha0/validations/9b76ecc4-4899-41aa-b3a6-e8d2325dbac8
+```
+
+After some time you should see that the phase of the Validation Job reads 'succeeded', which means Dependency Monkey has come to a conclusion: the software stack you requests is either valid or not. Use the curl command from about to get the final result.
+
+# API
+
+Right now the Validation API is at version v0alpha0, please find an [OpenAPI definition](swagger.json) within this repository.
+
 # Validation Request
+
+This section details what the attributes of a Validation mean.
 
 # Valiation
 
@@ -31,7 +74,6 @@ oc create sa validation-job-runner
 oc policy add-role-to-user view -z validation-job-runner
 oc policy add-role-to-user edit -z validation-job-runner
 
-oc create -f api-service-imageStream.yaml
 oc create -f api-service-buildConfig.yaml
 
 oc process -f api-service-template.yaml | oc create -f -

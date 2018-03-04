@@ -1,0 +1,232 @@
+{
+    "swagger": "2.0",
+    "responses": {
+        "ParseError": {
+            "description": "When a mask can't be parsed"
+        },
+        "MaskError": {
+            "description": "When any error occurs on mask"
+        }
+    },
+    "produces": [
+        "application/json"
+    ],
+    "definitions": {
+        "Validation": {
+            "properties": {
+                "ecosystem": {
+                    "description": "In which ecosystem is the stack specification to be validated: [pypi]",
+                    "example": "pypi",
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "This indicates that the Validation is valid",
+                    "example": "true",
+                    "type": "boolean"
+                },
+                "raw_log": {
+                    "description": "This is the raw log of the Validation job",
+                    "type": "string"
+                },
+                "phase": {
+                    "description": "Phase of the Validation job: [pending, running, succeeded, failed]",
+                    "example": "succeeded",
+                    "type": "string"
+                },
+                "stack_specification": {
+                    "description": "Specification of the Software Stack",
+                    "example": "pandas\\nnumpy>=1.11.0",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "The Validation unique identifier",
+                    "example": "7b63d226-1d6c-11e8-968f-54ee7504b46f",
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "ecosystem",
+                "id",
+                "phase",
+                "stack_specification"
+            ]
+        },
+        "ValidationListItem": {
+            "properties": {
+                "id": {
+                    "description": "The Validation unique identifier",
+                    "example": "7b63d226-1d6c-11e8-968f-54ee7504b46f",
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "id"
+            ]
+        },
+        "ValidationRequest": {
+            "properties": {
+                "stack_specification": {
+                    "description": "Specification of the Software Stack",
+                    "example": "pandas\\nnumpy>=1.11.0",
+                    "type": "string"
+                },
+                "ecosystem": {
+                    "description": "In which ecosystem is the stack specification to be validated: [pypi]",
+                    "default": "pypi",
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "ecosystem",
+                "stack_specification"
+            ]
+        }
+    },
+    "info": {
+        "description": "The \"Dependency Monkey\" is a service for validating package dependencies within an application stack",
+        "version": "0.1.0",
+        "title": "Thoth: Dependency Monkey API"
+    },
+    "tags": [
+        {
+            "description": "Default namespace",
+            "name": "default"
+        },
+        {
+            "description": "Validations",
+            "name": "validations"
+        }
+    ],
+    "paths": {
+        "/api/v0alpha0/validations/": {
+            "get": {
+                "parameters": [
+                    {
+                        "format": "mask",
+                        "name": "X-Fields",
+                        "description": "An optional fields mask",
+                        "in": "header",
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "validations"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "items": {
+                                "$ref": "#/definitions/ValidationListItem"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "503": {
+                        "description": "Service we depend on is not available"
+                    }
+                },
+                "operationId": "list_validations",
+                "summary": "List all Validations"
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "name": "payload",
+                        "schema": {
+                            "$ref": "#/definitions/ValidationRequest"
+                        },
+                        "in": "body",
+                        "required": true
+                    },
+                    {
+                        "format": "mask",
+                        "name": "X-Fields",
+                        "description": "An optional fields mask",
+                        "in": "header",
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "validations"
+                ],
+                "responses": {
+                    "400": {
+                        "description": "Ecosystem not supported"
+                    },
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/Validation"
+                        }
+                    },
+                    "503": {
+                        "description": "Service we depend on is not available"
+                    }
+                },
+                "operationId": "request_validation",
+                "summary": "Request a new Validation"
+            }
+        },
+        "/api/v0alpha0/validations/{id}": {
+            "get": {
+                "parameters": [
+                    {
+                        "format": "mask",
+                        "name": "X-Fields",
+                        "description": "An optional fields mask",
+                        "in": "header",
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "validations"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/Validation"
+                        }
+                    },
+                    "404": {
+                        "description": "Validation not found"
+                    }
+                },
+                "operationId": "get_validation",
+                "summary": "Show a specific Validation"
+            },
+            "parameters": [
+                {
+                    "description": "The Validation identifier",
+                    "name": "id",
+                    "in": "path",
+                    "required": true,
+                    "type": "string"
+                }
+            ],
+            "delete": {
+                "tags": [
+                    "validations"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Validation deleted"
+                    },
+                    "404": {
+                        "description": "Validation not found"
+                    }
+                },
+                "operationId": "delete_validation",
+                "summary": "Delete a Validation given its identifier"
+            }
+        }
+    },
+    "consumes": [
+        "application/json"
+    ],
+    "basePath": "/"
+}
