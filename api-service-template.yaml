@@ -49,9 +49,13 @@ objects:
           app: dependency-monkey
           deploymentconfig: api-service
       spec:
+        serviceAccount: validation-job-runner
+        serviceAccountName: validation-job-runner
         containers:
         - name: api-service
-          image: " "
+          from:
+            kind: ImageStreamTag
+            name: api-service:latest
           imagePullPolicy: Always
           serviceAccountName: validation-job-runner
           ports:
@@ -62,6 +66,13 @@ objects:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
     test: false
     triggers:
     - type: ConfigChange
@@ -72,7 +83,6 @@ objects:
         from:
           kind: ImageStreamTag
           name: api-service:latest
-          namespace: ai-coe
       type: ImageChange
 - kind: ImageStream
   apiVersion: v1
