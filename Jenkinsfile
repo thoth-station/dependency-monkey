@@ -17,7 +17,7 @@ tagMap['pypi-validator'] = '0.1.0'
 
 // IRC properties
 IRC_NICK = "ai-coe-bot"
-IRC_CHANNEL = "#AI-CoE"
+IRC_CHANNEL = "#thoth-station"
 
 properties(
     [
