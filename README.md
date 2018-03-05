@@ -4,6 +4,15 @@ The "Dependency Monkey" is a service for validating of package dependencies with
 
 ![The Dependency Monkey](graphics/dependency_monkey.png)
 
+
+# Software Stacks
+
+By Software Stack we mean any set of packages that is requires to provide the functions requires by your software. A software stack is valid, if we can create a set of direct acyclic graphs, that contains all packages requires by the software stack. These packages may include version specifications.
+
+# Validation
+
+A Validation is the task of evaluation if a given software stack specification could be resolved into a set of graphs. The resolution algorithm or tool may be specific to each ecosystem the software packages come from.
+
 # An Example
 
 Right now the dependency monkey is capable of validating Python requirements/software stacks: if you ask him to 'validate pandas and numpy and six' it will tell you if this software stack is valid or not. The API will also return a resolved and locked dependency list, always defaulting to the latest version of each package.
@@ -64,6 +73,12 @@ The state of each Valiation is stored with it's corresponding Kubernetes Job. Va
 * Failed: All Containers in the Validation job have terminated, and at least one Container has terminated in failure.
 
 * Unknown: For some reason the state of the Validation job could not be obtained.
+
+## Validator Interface
+
+Each Validation is carried out in its specific ecosystem, so per ecosystem there is a Validator, they get run as OpenShift Jobs, therefore they are wrapped up in a container image. Validator container images are located in [images/](images/).
+
+All Validators expect two environment variables: `ECOSYSTEM` and `STACK_SPECIFICATION`, they should be injected into a running container. For convenience all Validators should use the entrypoint `validate`.
 
 # Deployment
 
