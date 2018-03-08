@@ -22,15 +22,19 @@ import os
 import time
 import logging
 
-from flask import Flask, redirect, request, jsonify
+from flask import Flask
+from flask import jsonify
+from flask import request
 from flask.helpers import make_response
 
-from flask_restplus import Resource, Api, fields
 
-from prometheus_client import Counter, Histogram, generate_latest, CollectorRegistry, CONTENT_TYPE_LATEST, core
+from prometheus_client import CONTENT_TYPE_LATEST
+from prometheus_client import Counter
+from prometheus_client import Histogram
+from prometheus_client import core
+from prometheus_client import generate_latest
 
 import thoth_dependency_monkey
-from thoth_dependency_monkey.validation_dao import ValidationDAO, NotFoundError, EcosystemNotSupportedError
 from thoth_dependency_monkey.apis import api
 
 FLASK_REQUEST_LATENCY = Histogram('flask_request_latency_seconds', 'Flask Request Latency',

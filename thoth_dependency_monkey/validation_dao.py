@@ -176,7 +176,7 @@ class ValidationDAO():
     def _whats_my_name(self, id):
         return VALIDATION_JOB_PREFIX + str(id)
 
-    def _schedule_validation_job(self, id, spec, ecosystem):
+    def _schedule_validation_job(self, id, spec, ecosystem):  # pragma: no cover
         logger.debug('scheduling validation id {}'.format(id))
 
         _name = self._whats_my_name(id)
@@ -241,7 +241,7 @@ class ValidationDAO():
 
             raise ServiceUnavailable('OpenShift')
 
-    def _get_all_scheduled_validation_job(self):
+    def _get_all_scheduled_validation_job(self):  # pragma: no cover
         logger.debug('looking for all validations')
 
         result = []
@@ -280,7 +280,7 @@ class ValidationDAO():
 
         return result
 
-    def _get_scheduled_validation_job(self, id):
+    def _get_scheduled_validation_job(self, id):  # pragma: no cover
         logger.debug('looking for validation id {}'.format(id))
 
         # if we got no BEARER_TOKEN, we use local config
@@ -313,7 +313,7 @@ class ValidationDAO():
 
         return None
 
-    def _get_job_log(self, id):
+    def _get_job_log(self, id):  # pragma: no cover
         logger.debug('getting logs for validation id {}'.format(id))
 
         # if we got no BEARER_TOKEN, we use local config

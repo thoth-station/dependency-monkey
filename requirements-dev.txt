@@ -1,4 +1,6 @@
 -r requirements.txt
 pylint
-pytest
 autopep8
+pytest
+pytest-cov
+coverage
