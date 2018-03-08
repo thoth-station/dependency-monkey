@@ -34,9 +34,9 @@ from thoth_dependency_monkey.validation_dao import ValidationDAO, NotFoundError,
 from thoth_dependency_monkey.apis import api
 
 FLASK_REQUEST_LATENCY = Histogram('flask_request_latency_seconds', 'Flask Request Latency',
-                                  ['method', 'endpoint'])
+                                  ['method'])
 FLASK_REQUEST_COUNT = Counter('flask_request_count', 'Flask Request Count',
-                              ['method', 'endpoint', 'http_status'])
+                              ['method', 'http_status'])
 
 DEBUG = bool(os.getenv('DEBUG', False))
 
@@ -63,9 +63,9 @@ def before_request():
 def after_request(response):
     request_latency = time.time() - request.start_time
     FLASK_REQUEST_LATENCY.labels(
-        request.method, request.path).observe(request_latency)
+        request.method).observe(request_latency)
     FLASK_REQUEST_COUNT.labels(
-        request.method, request.path, response.status_code).inc()
+        request.method, response.status_code).inc()
 
     return response
 
