@@ -1,10 +1,10 @@
 // Openshift project
 OPENSHIFT_NAMESPACE = 'ai-coe'
 OPENSHIFT_SERVICE_ACCOUNT = 'jenkins'
-DOCKER_REPO_URL = '172.30.254.79:5000'
+DOCKER_REPO_URL = 'docker-registry.default.svc.cluster.local:5000'
 
 // Defaults for SCM operations
-env.ghprbGhRepository = env.ghprbGhRepository ?: 'goern/thoth-dependency-monkey'
+env.ghprbGhRepository = env.ghprbGhRepository ?: 'AICoE/thoth-dependency-monkey'
 env.ghprbActualCommit = env.ghprbActualCommit ?: 'master'
 
 // If this PR does not include an image change, then use this tag
@@ -12,11 +12,11 @@ STABLE_LABEL = "stable"
 tagMap = [:]
 
 // Initialize
-tagMap['thoth-dependency-monkey'] = '0.1.0'
-tagMap['pypi-validator'] = '0.1.0'
+tagMap['thoth-dependency-monkey'] = '0.1.2'
+tagMap['pypi-validator'] = '0.1.2'
 
 // IRC properties
-IRC_NICK = "ai-coe-bot"
+IRC_NICK = "aicoe-bot"
 IRC_CHANNEL = "#thoth-station"
 
 properties(
@@ -58,7 +58,7 @@ pipeline {
             containerTemplate {
                 name 'jnlp'
                 args '${computer.jnlpmac} ${computer.name}'
-                image DOCKER_REPO_URL + '/continuous-infra/jenkins-continuous-infra-slave:' + STABLE_LABEL
+                image DOCKER_REPO_URL + 'ai-coe/jenkins-ai-coe-slave:' + STABLE_LABEL
                 ttyEnabled false
                 command ''
             }
@@ -90,12 +90,12 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "api-service", '0.1.1')
+                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "api-service", '0.1.2')
                         }
 
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "pypi-validator", '0.1.1')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "pypi-validator", '0.1.2')
                         }
                     }   
                 } 
@@ -106,7 +106,7 @@ pipeline {
             parallel {
                 stage("Functional Tests") {
                     steps {
-                        echo "TODO"
+                        sh 'pytest'
                     }
                 }
             }
@@ -122,6 +122,8 @@ pipeline {
     post {
         always {
             script {
+                junit 'reports/*.xml'
+
                 String prMsg = ""
                 if (env.ghprbActualCommit != null && env.ghprbActualCommit != "master") {
                     prMsg = "(PR #${env.ghprbPullId} ${env.ghprbPullAuthorLogin})"
@@ -129,7 +131,7 @@ pipeline {
                 def message = "${JOB_NAME} ${prMsg} build #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
 
                 pipelineUtils.sendIRCNotification("${IRC_NICK}", IRC_CHANNEL, message)
-                mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message} (<${env.BUILD_URL}|open>)"
+                mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message}"
 
             }
         }

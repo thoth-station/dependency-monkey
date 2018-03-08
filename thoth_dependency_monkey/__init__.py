@@ -1,2 +1,2 @@
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 __description__ = 'The "Dependency Monkey" is a service for validating package dependencies within an application stack.'
