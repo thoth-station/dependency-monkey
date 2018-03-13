@@ -1,7 +1,8 @@
 // Openshift project
-OPENSHIFT_NAMESPACE = 'ai-coe'
 OPENSHIFT_SERVICE_ACCOUNT = 'jenkins'
 DOCKER_REPO_URL = 'docker-registry.default.svc.cluster.local:5000'
+CI_NAMESPACE= env.CI_NAMESPACE ?: 'ai-coe'
+CI_TEST_NAMESPACE = env.CI_TEST_NAMESPACE ?: 'ai-coe'
 
 // Defaults for SCM operations
 env.ghprbGhRepository = env.ghprbGhRepository ?: 'AICoE/thoth-dependency-monkey'
@@ -58,7 +59,7 @@ pipeline {
             containerTemplate {
                 name 'jnlp'
                 args '${computer.jnlpmac} ${computer.name}'
-                image DOCKER_REPO_URL + 'ai-coe/jenkins-ai-coe-slave:' + STABLE_LABEL
+                image DOCKER_REPO_URL + '/'+ CI_NAMESPACE +'/jenkins-aicoe-slave:' + STABLE_LABEL
                 ttyEnabled false
                 command ''
             }
@@ -68,7 +69,7 @@ pipeline {
         stage("Setup Build Templates") {
             steps {
                 script {
-                    aIStacksPipelineUtils.createBuildConfigs(OPENSHIFT_NAMESPACE)
+                    aIStacksPipelineUtils.createBuildConfigs(CI_TEST_NAMESPACE)
                 }
             }
         }
@@ -90,12 +91,12 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "api-service", '0.1.2')
+                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "api-service", '0.1.2')
                         }
 
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(OPENSHIFT_NAMESPACE, "pypi-validator", '0.1.2')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.2')
                         }
                     }   
                 } 
