@@ -108,7 +108,7 @@ pipeline {
                 stage("Functional Tests") {
                     steps {
                         sh 'echo noop pytest'
-                        sh 'touch reports/noop.xml'
+                        sh 'mkdir reports/ && touch reports/noop.xml'
                     }
                 }
             }
