@@ -87,13 +87,17 @@ pipeline {
         }
         stage("Build Container Images") {
             parallel {
-                stage("Thoth: Dependency Monkey") {
+                stage("API Service") {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
                             tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "api-service", '0.1.2')
                         }
 
+                    }
+                }
+                stage("PyPI Validator") {
+                    steps {
                         echo "Building PyPI Validator container image..."
                         script {
                             tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.2')
@@ -102,7 +106,7 @@ pipeline {
                 } 
             }
         }
-        stage("Testing") {
+/*        stage("Testing") {
             failFast true
             parallel {
                 stage("Functional Tests") {
@@ -112,7 +116,7 @@ pipeline {
                     }
                 }
             }
-        }
+        } */ 
         stage("Image Tag Report") {
             steps {
                 script {
@@ -124,7 +128,7 @@ pipeline {
     post {
         always {
             script {
-                junit 'reports/*.xml'
+                // junit 'reports/*.xml'
 
                 String prMsg = ""
                 if (env.ghprbActualCommit != null && env.ghprbActualCommit != "master") {
