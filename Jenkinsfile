@@ -5,7 +5,7 @@ CI_NAMESPACE= env.CI_NAMESPACE ?: 'ai-coe'
 CI_TEST_NAMESPACE = env.CI_THOTH_TEST_NAMESPACE ?: 'ai-coe'
 
 // Defaults for SCM operations
-env.ghprbGhRepository = env.ghprbGhRepository ?: 'AICoE/thoth-dependency-monkey'
+env.ghprbGhRepository = env.ghprbGhRepository ?: 'AICoE/dependency-monkey-api'
 env.ghprbActualCommit = env.ghprbActualCommit ?: 'master'
 
 // If this PR does not include an image change, then use this tag
@@ -13,8 +13,8 @@ STABLE_LABEL = "stable"
 tagMap = [:]
 
 // Initialize
-tagMap['thoth-dependency-monkey'] = '0.1.2'
-tagMap['pypi-validator'] = '0.1.2'
+tagMap['dependency-monkey-api'] = '0.1.3'
+tagMap['pypi-validator'] = '0.1.3'
 
 // IRC properties
 IRC_NICK = "aicoe-bot"
@@ -91,7 +91,7 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "api-service", '0.1.2')
+                            tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
                         }
 
                     }
@@ -100,7 +100,7 @@ pipeline {
                     steps {
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.2')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.3')
                         }
                     }   
                 } 
