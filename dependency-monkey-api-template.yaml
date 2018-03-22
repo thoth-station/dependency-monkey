@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Template
 metadata:
-  name: api-service
+  name: dependency-monkey-api
   annotations:
     description: This is Thoth Dependency Monkey, it validates package dependencies in software stacks.
     openshift.io/display-name: Dependency Monkey
@@ -23,7 +23,7 @@ objects:
   metadata:
     labels:
       app: dependency-monkey
-    name: api-service
+    name: dependency-monkey-api
   spec:
     ports:
     - name: 8080-tcp
@@ -31,31 +31,31 @@ objects:
       protocol: TCP
       targetPort: 8080
     selector:
-      deploymentconfig: api-service
+      deploymentconfig: dependency-monkey-api
 - apiVersion: v1
   kind: DeploymentConfig
   metadata:
     labels:
       app: dependency-monkey
-    name: api-service
+    name: dependency-monkey-api
   spec:
     replicas: 1
     selector:
       app: dependency-monkey
-      deploymentconfig: api-service
+      deploymentconfig: dependency-monkey-api
     template:
       metadata:
         labels:
           app: dependency-monkey
-          deploymentconfig: api-service
+          deploymentconfig: dependency-monkey-api
       spec:
         serviceAccount: validation-job-runner
         serviceAccountName: validation-job-runner
         containers:
-        - name: api-service
+        - name: dependency-monkey-api
           from:
             kind: ImageStreamTag
-            name: api-service:latest
+            name: dependency-monkey-api:latest
           imagePullPolicy: Always
           serviceAccountName: validation-job-runner
           ports:
@@ -79,15 +79,15 @@ objects:
     - imageChangeParams:
         automatic: true
         containerNames:
-        - api-service
+        - dependency-monkey-api
         from:
           kind: ImageStreamTag
-          name: api-service:latest
+          name: dependency-monkey-api:stable
       type: ImageChange
 - kind: ImageStream
   apiVersion: v1
   metadata:
-    name: api-service
+    name: dependency-monkey-api
   spec:
     lookupPolicy:
       local: false

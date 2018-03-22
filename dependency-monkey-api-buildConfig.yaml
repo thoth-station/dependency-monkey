@@ -3,12 +3,12 @@ kind: BuildConfig
 metadata:
   labels:
     app: dependency-monkey
-  name: api-service
+  name: dependency-monkey-api
 spec:
   output:
     to:
       kind: ImageStreamTag
-      name: api-service:latest
+      name: dependency-monkey-api:test
   postCommit: {}
   resources: {}
   runPolicy: Serial

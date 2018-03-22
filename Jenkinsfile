@@ -13,8 +13,8 @@ STABLE_LABEL = "stable"
 tagMap = [:]
 
 // Initialize
-tagMap['thoth-dependency-monkey'] = '0.1.2'
-tagMap['pypi-validator'] = '0.1.2'
+tagMap['dependency-monkey-api'] = '0.1.3'
+tagMap['pypi-validator'] = '0.1.3'
 
 // IRC properties
 IRC_NICK = "aicoe-bot"
@@ -91,7 +91,7 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['thoth-dependency-monkey'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "api-service", '0.1.2')
+                            tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
                         }
 
                     }
@@ -100,7 +100,7 @@ pipeline {
                     steps {
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.2')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.3')
                         }
                     }   
                 } 
