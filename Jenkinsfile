@@ -91,7 +91,7 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, 'dependency-monkey-api', '0.1.3')
+                            tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
                         }
 
                     }
@@ -100,7 +100,7 @@ pipeline {
                     steps {
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, 'pypi-validator', '0.1.3')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.3')
                         }
                     }   
                 } 
@@ -109,7 +109,7 @@ pipeline {
         stage("Redeploy to Test") {
             steps {
                 script {
-                    aIStacksPipelineUtils.redeployFromImageStreamTag(CI_TEST_NAMESPACE, 'dependency-monkey-api', '0.1.3')
+                    aIStacksPipelineUtils.redeployFromImageStreamTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
                 }
             }
         }
