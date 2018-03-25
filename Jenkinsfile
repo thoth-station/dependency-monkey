@@ -12,10 +12,6 @@ env.ghprbActualCommit = env.ghprbActualCommit ?: 'master'
 STABLE_LABEL = "stable"
 tagMap = [:]
 
-// Initialize
-tagMap['dependency-monkey-api'] = '0.1.3'
-tagMap['pypi-validator'] = '0.1.3'
-
 // IRC properties
 IRC_NICK = "aicoe-bot"
 IRC_CHANNEL = "#thoth-station"
@@ -106,7 +102,7 @@ pipeline {
                 } 
             }
         }
-        stage("Redeploy to Test") {
+        stage("Deploy to Test") {
             steps {
                 script {
                     aIStacksPipelineUtils.redeployFromImageStreamTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
@@ -144,14 +140,17 @@ pipeline {
                 def message = "${JOB_NAME} ${prMsg} build #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
 
                 pipelineUtils.sendIRCNotification("${IRC_NICK}", IRC_CHANNEL, message)
-                mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message}"
-
+                
             }
         }
         success {
             echo "All Systems GO!"
         }
         failure {
+            def message = "${JOB_NAME} build #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
+
+            mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message}"
+
             error "BREAK BREAK BREAK - build failed!"
         }
     }
