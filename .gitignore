@@ -102,3 +102,4 @@ ENV/
 .mypy_cache/
 .pytest_cache/
 images/npm-validator/node_modules/
+.vscode/
