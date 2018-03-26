@@ -4,7 +4,7 @@ LABEL io.k8s.description="Thoth Dependency Monkey Validator for Pypi" \
     io.k8s.display-name="Thoth: pypi validator" \
     io.openshift.tags="thoth,python,dependency_monkey,validator" \
     architecture=x86_64 \
-    name="ai-coe/tdm-pypi-validator" \
+    name="aicoe/pypi-validator" \
     vendor="Red Hat CTO Office - AI CoE" \
     license="GPLv3"
 
