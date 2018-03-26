@@ -26,16 +26,16 @@ from thoth_dependency_monkey.validation_dao import ValidationDAO, NotFoundError
 from thoth_dependency_monkey.ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
 
-ns = Namespace('validations', description='Validations')
+ns = Namespace('validations', description='Validations')  # pragma: no cover
 
 validation_request = ns.model('ValidationRequest', {
     'stack_specification': fields.String(required=True, example='pandas\\nnumpy>=1.11.0', description='Specification of the Software Stack'),
     'ecosystem': fields.String(required=True, default='pypi', description='In which ecosystem is the stack specification to be validated: [pypi]')
-})
+})  # pragma: no cover
 
 validation_request_response = ns.model('ValidationRequestResponse', {
     'id': fields.String(required=True, readOnly=True, example='7b63d226-1d6c-11e8-968f-54ee7504b46f', description='The Validation unique identifier')
-})
+})  # pragma: no cover
 
 validation = ns.model('Validation', {
     'id': fields.String(required=True, readOnly=True, example='7b63d226-1d6c-11e8-968f-54ee7504b46f', description='The Validation unique identifier'),
@@ -44,7 +44,7 @@ validation = ns.model('Validation', {
     'phase': fields.String(required=True, readOnly=True, example='succeeded', description='Phase of the Validation job: [pending, running, succeeded, failed]'),
     'raw_log': fields.String(readOnly=True, description='This is the raw log of the Validation job'),
     'valid': fields.Boolean(readOnly=True, example='true', description='This indicates that the Validation is valid')
-})
+})  # pragma: no cover
 
 validationListItem = ns.model('ValidationListItem', {
     'id': fields.String(required=True, readOnly=True, example='7b63d226-1d6c-11e8-968f-54ee7504b46f', description='The Validation unique identifier'),

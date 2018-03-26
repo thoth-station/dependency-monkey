@@ -16,7 +16,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Thoth: Dependency Monkey API"""
+"""Thoth: Dependency Monkey API"""  # pragma: no cover
 
 
 class EcosystemNotSupportedError(Exception):
@@ -26,12 +26,12 @@ class EcosystemNotSupportedError(Exception):
         name -- name of the ecosystem
     """
 
-    def __init__(self, name):
+    def __init__(self, name):  # pragma: no cover
         self.name = name
         self.message = "Ecosystem {} is not supported".format(name)
 
-    def str(self):
+    def str(self):  # pragma: no cover
         return self.message
 
 
-ECOSYSTEM = ['pypi']
+ECOSYSTEM = ['pypi']  # pragma: no cover
