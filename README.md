@@ -15,7 +15,7 @@ A Validation is the task of evaluation if a given software stack specification c
 
 # An Example
 
-Right now the dependency monkey is capable of validating Python requirements/software stacks: if you ask him to 'validate pandas and numpy and six' it will tell you if this software stack is valid or not. The API will also return a resolved and locked dependency list, always defaulting to the latest version of each package.
+Right now the dependency monkey is capable of validating Python requirements/software stacks: if you ask him to 'validate pandas and numpy and six' he will tell you if this software stack is valid or not. The API will also return a resolved and locked dependency list, always defaulting to the latest version of each package.
 
 Let's take a look at the workflow: first of all we request a new Validation, note that package specifications are delimited by newlines!
 
@@ -48,7 +48,7 @@ curl -X GET --header 'Accept: application/json' \
      http://api-service-thoth-dev.1d35.starter-us-east-1.openshiftapps.com/api/v0alpha0/validations/9b76ecc4-4899-41aa-b3a6-e8d2325dbac8
 ```
 
-After some time you should see that the phase of the Validation Job reads 'succeeded', which means Dependency Monkey has come to a conclusion: the software stack you requests is either valid or not. Use the curl command from about to get the final result.
+After some time you should see that the phase of the Validation Job reads 'succeeded', which means Dependency Monkey has come to a conclusion: the software stack you requests is either valid or not. Use the curl command from above to get the final result.
 
 # API
 
@@ -58,9 +58,9 @@ Right now the Validation API is at version v0alpha0, please find an [OpenAPI def
 
 This section details what the attributes of a Validation mean.
 
-# Valiation
+# Validation
 
-The state of each Valiation is stored with it's corresponding Kubernetes Job. Validation results will be available for a certain amount of time (data retention period).
+The state of each Validation is stored with it's corresponding Kubernetes Job. Validation results will be available for a certain amount of time (data retention period).
 
 ## Phases
 
