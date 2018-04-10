@@ -76,20 +76,13 @@ objects:
     test: false
     triggers:
     - type: ConfigChange
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - dependency-monkey-api
-        from:
-          kind: ImageStreamTag
-          name: dependency-monkey-api:stable
-      type: ImageChange
+
 - kind: ImageStream
   apiVersion: v1
   metadata:
     name: dependency-monkey-api
   spec:
     lookupPolicy:
-      local: false
+      local: true
   status:
     dockerImageRepository: ""

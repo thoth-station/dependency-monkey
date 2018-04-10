@@ -1,7 +1,7 @@
 // Openshift project
 OPENSHIFT_SERVICE_ACCOUNT = 'jenkins'
 DOCKER_REPO_URL = 'docker-registry.default.svc.cluster.local:5000'
-CI_NAMESPACE= env.CI_NAMESPACE ?: 'ai-coe'
+CI_NAMESPACE= env.CI_PIPELINE_NAMESPACE ?: 'ai-coe'
 CI_TEST_NAMESPACE = env.CI_THOTH_TEST_NAMESPACE ?: 'ai-coe'
 
 // Defaults for SCM operations
@@ -101,8 +101,8 @@ pipeline {
                             def model = openshift.process('thoth-dependency-monkey-api-buildconfig',
                                     "-p", 
                                     "IMAGE_STREAM_TAG=${env.TAG}",
-                                    "THOTH_USER_API_GIT_REF=${env.REF}",
-                                    "THOTH_USER_API_GIT_URL=https://github.com/${org}/${repo}")
+                                    "GITHUB_URL=https://github.com/${org}/${repo}",
+                                    "GITHUB_REF=${env.REF}")
 
                             echo "BuildConfig Model from Template"
                             echo "${model}"
@@ -127,33 +127,61 @@ pipeline {
             }
         }
         stage("Build Container Images") {
-            parallel {
-                stage("API Service") {
+//            parallel {
+//                stage("API Service") {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
                             tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", "${env.TAG}")
-                        }
+//                        }
 
-                    }
-                }
-                stage("PyPI Validator") {
-                    steps {
+//                    }
+//                }
+//                stage("PyPI Validator") {
+//                    steps {
                         echo "Building PyPI Validator container image..."
-                        script {
+//                        script {
                             tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", "${env.TAG}")
                         }
                     }   
-                } 
-            }
-        } /*
+//                } 
+//            }
+        }
         stage("Deploy to Test") {
             steps {
                 script {
-                    aIStacksPipelineUtils.redeployFromImageStreamTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
+                    // aIStacksPipelineUtils.redeployFromImageStreamTag(CI_TEST_NAMESPACE, "user-api", "${env.TAG}")
+                    // redeploy from ImageStreamTag ${env.TAG}
+                    openshift.withCluster() {
+                        openshift.withProject(CI_TEST_NAMESPACE) {
+                            echo "Creating test tag from user-api:${env.TAG}"
+
+                            openshift.tag("${CI_TEST_NAMESPACE}/dependency-monkey-api:${env.TAG}", "${CI_TEST_NAMESPACE}/dependency-monkey-api:test")
+
+                            /* Select the OpenShift DeploymentConfig object
+                             * Initiate a `oc rollout latest` command
+                             * Watch the status until the rollout is complete using the `oc`
+                             * option `-w` to watch
+                             */
+                            def result = null
+
+                            deploymentConfig = openshift.selector("dc", "dependency-monkey-api")
+                            deploymentConfig.rollout().latest()
+
+                            timeout(10) {
+                                result = deploymentConfig.rollout().status("-w")
+                            }
+
+                            if (result.status != 0) {
+                                error(result.err)
+                            }
+                        }
+                    } // withCluster
                 }
             }
-        }
+        } // stage
+
+/*
         stage("Testing") {
             failFast true
             parallel {
