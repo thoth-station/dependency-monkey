@@ -7,6 +7,17 @@ CI_TEST_NAMESPACE = env.CI_THOTH_TEST_NAMESPACE ?: 'ai-coe'
 // Defaults for SCM operations
 env.ghprbGhRepository = env.ghprbGhRepository ?: 'AICoE/thoth-dependency-monkey'
 env.ghprbActualCommit = env.ghprbActualCommit ?: 'master'
+// github-organization-plugin jobs are named as 'org/repo/branch'
+// we don't want to assume that the github-organization job is at the top-level
+// instead we get the total number of tokens (size) 
+// and work back from the branch level Pipeline job where this would actually be run
+// Note: that branch job is at -1 because Java uses zero-based indexing
+tokens = "${env.JOB_NAME}".tokenize('/')
+org = tokens[tokens.size()-3]
+repo = tokens[tokens.size()-2]
+branch = tokens[tokens.size()-1]
+
+echo "${org} ${repo} ${branch}"
 
 // If this PR does not include an image change, then use this tag
 STABLE_LABEL = "stable"
@@ -50,7 +61,7 @@ pipeline {
     agent {
         kubernetes {
             cloud 'openshift'
-            label 'ai-stacks-pipeline-' + env.ghprbActualCommit
+            label 'thoth-master'
             serviceAccount OPENSHIFT_SERVICE_ACCOUNT
             containerTemplate {
                 name 'jnlp'
@@ -62,13 +73,47 @@ pipeline {
         }
     }
     stages {
-        stage("Setup Build Templates") {
+        stage("Setup BuildConfig") {
             steps {
-                script {
-                    aIStacksPipelineUtils.createBuildConfigs(CI_TEST_NAMESPACE)
+                script {                    
+                    env.TAG = "test"
+                    env.REF = "master"
+
+                    // TODO check if this works with branches that are not included in a PR
+                    if (env.BRANCH_NAME != 'master') {
+                        env.TAG = env.BRANCH_NAME.replace("/", "-")
+
+                        if (env.Tag.startsWith("PR")) {
+                            env.REF = "refs/pull/${env.CHANGE_ID}/head"
+                        } else {
+                            env.REF = branch.replace("%2F", "/")
+                        }
+                    }
+
+                    openshift.withCluster() {
+                        openshift.withProject(CI_TEST_NAMESPACE) {
+                            if (!openshift.selector("template/thoth-dependency-monkey-api-buildconfig").exists()) {
+                                openshift.apply(readFile('openshift/buildConfig-template.yaml'))
+                                echo "BuildConfig Template created!"
+                            }
+
+                            /* Process the template and return the Map of the result */
+                            def model = openshift.process('thoth-dependency-monkey-api-buildconfig',
+                                    "-p", 
+                                    "IMAGE_STREAM_TAG=${env.TAG}",
+                                    "THOTH_USER_API_GIT_REF=${env.REF}",
+                                    "THOTH_USER_API_GIT_URL=https://github.com/${org}/${repo}")
+
+                            echo "BuildConfig Model from Template"
+                            echo "${model}"
+
+                            echo "Updating BuildConfig from model..."
+                            createdObjects = openshift.apply(model)
+                        }
+                    }
                 }
-            }
-        }
+            } // steps
+        } // stage
         stage("Get Changelog") {
             steps {
                 node('master') {
@@ -87,7 +132,7 @@ pipeline {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
-                            tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", '0.1.3')
+                            tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", "${env.TAG}")
                         }
 
                     }
@@ -96,12 +141,12 @@ pipeline {
                     steps {
                         echo "Building PyPI Validator container image..."
                         script {
-                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", '0.1.3')
+                            tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", "${env.TAG}")
                         }
                     }   
                 } 
             }
-        }
+        } /*
         stage("Deploy to Test") {
             steps {
                 script {
@@ -109,7 +154,7 @@ pipeline {
                 }
             }
         }
-/*        stage("Testing") {
+        stage("Testing") {
             failFast true
             parallel {
                 stage("Functional Tests") {
@@ -150,7 +195,7 @@ pipeline {
             script {
                 def message = "${JOB_NAME} build #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
 
-                mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message}"
+//                mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message}"
 
                 error "BREAK BREAK BREAK - build failed!"
             }
