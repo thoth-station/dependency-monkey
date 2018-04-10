@@ -127,7 +127,7 @@ pipeline {
             }
         }
         stage("Build Container Images") {
-//            parallel {
+//            parallel { // openshift client gets confused if I do communicate with Openshift in a parallel{} ?!
 //                stage("API Service") {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
@@ -199,7 +199,28 @@ pipeline {
                     pipelineUtils.printLabelMap(tagMap)
                 }
             }
-        }
+        } // stage
+        stage("Tag stable image") {
+            steps {
+                script {
+                    // Tag ImageStreamTag ${env.TAG} as our new :stable
+                    openshift.withCluster() {
+                        openshift.withProject(CI_TEST_NAMESPACE) {
+                            echo "Creating stable tag from dependency-monkey-api:${env.TAG}"
+
+                            openshift.tag("${CI_TEST_NAMESPACE}/dependency-monkey-api:${env.TAG}", "${CI_TEST_NAMESPACE}/dependency-monkey-api:stable")
+                        }
+                    } // withCluster
+                } // script
+            } // steps
+        } // stage
+        stage("Trigger Promotion") {
+            steps {
+                script {
+                    echo 'trigger promotion to Stage'
+                } // script
+            } // steps
+        } // stage
     }
     post {
         always {
