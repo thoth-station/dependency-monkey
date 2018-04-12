@@ -1,0 +1,15 @@
+[all]
+ignore = .git/**
+
+[all.python]
+files = *.py
+ignore += **/__init__.py
+bears = PEP8Bear, PyCommentedCodeBear, PyUnusedCodeBear
+language = python
+use_spaces = True
+remove_all_unused_imports = True
+
+[all.commit]
+bears = GitCommitBear
+shortlog_trailing_period = False
+shortlog_regex = ([^:]*|[^:]+[^ ]: [A-Z0-9*].*)

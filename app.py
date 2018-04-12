@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#   thoth-dependency-monkey 
+#   thoth-dependency-monkey
 #   Copyright(C) 2018 Christoph Görn
 #
 #   This program is free software: you can redistribute it and / or modify
@@ -22,27 +22,30 @@ import os
 import time
 import logging
 
-from flask import Flask, redirect, request, jsonify
+from flask import Flask
+from flask import jsonify
+from flask import request
 from flask.helpers import make_response
 
-from flask_restplus import Resource, Api, fields
 
-from prometheus_client import Counter, Histogram, generate_latest, CollectorRegistry, CONTENT_TYPE_LATEST, core
+from prometheus_client import CONTENT_TYPE_LATEST
+from prometheus_client import Counter
+from prometheus_client import Histogram
+from prometheus_client import core
+from prometheus_client import generate_latest
 
 import thoth_dependency_monkey
-from thoth_dependency_monkey.validation_dao import ValidationDAO, NotFoundError, EcosystemNotSupportedError
 from thoth_dependency_monkey.apis import api
 
 FLASK_REQUEST_LATENCY = Histogram('flask_request_latency_seconds', 'Flask Request Latency',
-                                  ['method', 'endpoint'])
+                                  ['method'])
 FLASK_REQUEST_COUNT = Counter('flask_request_count', 'Flask Request Count',
-                              ['method', 'endpoint', 'http_status'])
+                              ['method', 'http_status'])
 
 DEBUG = bool(os.getenv('DEBUG', False))
 
 if DEBUG:
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s,%(levelname)s,%(filename)s:%(lineno)d,%(message)s')
+    logging.basicConfig(level=logging.DEBUG)
 else:
     logging.basicConfig(level=logging.INFO)
 
@@ -64,9 +67,9 @@ def before_request():
 def after_request(response):
     request_latency = time.time() - request.start_time
     FLASK_REQUEST_LATENCY.labels(
-        request.method, request.path).observe(request_latency)
+        request.method).observe(request_latency)
     FLASK_REQUEST_COUNT.labels(
-        request.method, request.path, response.status_code).inc()
+        request.method, response.status_code).inc()
 
     return response
 

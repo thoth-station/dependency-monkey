@@ -10,7 +10,10 @@ name = "pypi"
 flask = "*"
 flask-restplus = "*"
 prometheus-client = "*"
-pymongo = "*"
+"ruamel.yaml" = "<=0.15"
+openshift = "*"
+kubernetes = "*"
+pip-tools = "*"
 
 
 [dev-packages]
@@ -19,4 +22,5 @@ pylint = "*"
 pytest = "*"
 "autopep8" = "*"
 coverage = "*"
-pytest-cov = "*"
+coala-bears = "*"
+pytest-cov="*"

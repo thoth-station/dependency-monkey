@@ -22,29 +22,26 @@ import os
 import logging
 import uuid
 
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
-from bson.objectid import ObjectId, InvalidId
-from werkzeug.exceptions import BadRequest, ServiceUnavailable
+from werkzeug.exceptions import BadRequest, ServiceUnavailable, NotImplemented
+from tempfile import NamedTemporaryFile
+from kubernetes import client, config
+from kubernetes.client import api_client
+from kubernetes.client.apis import batch_v1_api
+
 
 from .ecosystem import ECOSYSTEM, EcosystemNotSupportedError
 
 DEBUG = bool(os.getenv('DEBUG', False))
 
-MONGODB_USER = os.getenv('MONGODB_USER', 'mongo')
-MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD', 'mongo')
-MONGODB_HOSTNAME = os.getenv('MONGODB_HOSTNAME', 'mongodb')
-MONGODB_PORT = os.getenv('MONGODB_SERVICE_PORT', 27017)
-MONGODB_DATABASE = os.getenv('MONGODB_DATABASE', 'dev')
+KUBERNETES_API_URL = os.getenv(
+    'KUBERNETES_API_URL', 'https://kubernetes.default.svc.cluster.local:443')
+THOTH_DEPENDENCY_MONKEY_NAMESPACE = os.getenv(
+    'THOTH_DEPENDENCY_MONKEY_NAMESPACE', 'thoth-dev')
+VALIDATION_JOB_PREFIX = 'validation-job-'
 
-MONGODB_URL = 'mongodb://{}:{}@{}:{}/{}'.format(
-    MONGODB_USER, MONGODB_PASSWORD, MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
-
-if DEBUG and MONGODB_HOSTNAME == 'localhost':
-    MONGODB_URL = 'mongodb://{}:{}/{}'.format(
-        MONGODB_HOSTNAME, MONGODB_PORT, MONGODB_DATABASE)
-
+logging.basicConfig()
 logger = logging.getLogger(__file__)
+
 logger.setLevel(logging.DEBUG)
 
 
@@ -63,29 +60,79 @@ class NotFoundError(BadRequest):
 
 class ValidationDAO():
     def __init__(self):
-        logger.info(MONGODB_URL)
-        self.mongo = MongoClient(MONGODB_URL)
+        self.BEARER_TOKEN = None
 
-        # TODO handle
+        # if we can read bearer token from /var/run/secrets/kubernetes.io/serviceaccount/token use it,
+        # otherwise use the one from env
+        try:
+            logger.debug(
+                'trying to get bearer token from secrets file within pod...')
+            with open('/var/run/secrets/kubernetes.io/serviceaccount/token') as f:
+                self.BEARER_TOKEN = f.read()
+
+            self.SSL_CA_CERT_FILENAME = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+
+        except:
+            logger.info("not running within an OpenShift cluster...")
 
     def get(self, id):
-        try:
-            v = self.mongo[MONGODB_DATABASE]['validations'].find_one(
-                {"_id": ObjectId(id)})
-        except ConnectionFailure as e:
-            raise e  # TODO
-        except InvalidId as e:
-            raise NotFoundError(id)
-
-        if v is None:
-            raise NotFoundError(id)
+        v = {}
 
         v['id'] = id
+
+        _job = self._get_scheduled_validation_job(id)
+
+        # if we didnt get back anything from OpenShift, we let it 404
+        if _job is None:
+            raise NotFoundError(id)
+
+        # lets copy the Validation information from the Kubernetes Job
+        for container in _job.spec.template.spec.containers:
+            if container.name.endswith(str(id)):
+                for env in container.env:
+                    v[env.name.lower()] = env.value
+
+        if _job.status.succeeded is not None:
+            v['phase'] = 'succeeded'
+
+            log = self._get_job_log(id)
+
+            if log is not None:
+                v['raw_log'] = log
+
+                # TODO pretty sure we can do this better
+                if 'No matching distribution found' in log:
+                    v['valid'] = False
+                if 'The Software Stack Specification could not be validated, most probably a syntax error in the spec!' in log:
+                    v['valid'] = False
+                else:
+                    v['valid'] = True
+
+        elif _job.status.failed is not None:
+            v['phase'] = 'failed'
+        elif _job.status.active is not None:
+            v['phase'] = 'running'
 
         return v
 
     def get_all(self):
-        return self.mongo[MONGODB_DATABASE]['validations'].find()
+        jobs = self._get_all_scheduled_validation_job()
+
+        if len(jobs) > 0:
+            result = []
+
+            for job in jobs:
+                if job.metadata.name.startswith(VALIDATION_JOB_PREFIX):
+                    v = {}
+                    v['id'] = str(job.metadata.labels['validation-id'])
+
+                    result.append(
+                        {'id': str(job.metadata.labels['validation-id'])})
+
+            logger.debug('found the following validations: {}'.format(result))
+            return result
+        else:
+            return []
 
     def create(self, data):
         v = data
@@ -93,25 +140,211 @@ class ValidationDAO():
         if v['ecosystem'] not in ECOSYSTEM:
             raise EcosystemNotSupportedError(v['ecosystem'])
 
-        # TODO check if stack_specification is valid
+        # check if stack_specification is valid
+        if not self._validate_requirements(v['stack_specification']):
+            raise BadRequest(
+                'specification is not valid within Ecosystem {}'.format(v['ecosystem']))
 
-        v['result_queue_name'] = self._get_result_queue_name()
+        v['phase'] = 'pending'
+        v['id'] = str(uuid.uuid4())
 
-        try:
-            _v = self.mongo[MONGODB_DATABASE]['validations'].insert_one(v)
-        except Exception as e:
-            # FIXME we should log here...
-            raise ServiceUnavailable('database')
-
-        v['id'] = _v.inserted_id
+        self._schedule_validation_job(
+            v['id'], v['stack_specification'], v['ecosystem'])
 
         return v
 
     def delete(self, id):
-        v = self.get(id)
+        # TODO add kubernetes job stuff
+        raise NotImplemented()  # pylint: disable=E0711
 
-        self.mongo[MONGODB_DATABASE]['validations'].remove(
-            {"_id": ObjectId(id)})
+    def _validate_requirements(self, spec):
+        """This function will check if the syntax of the provided specification is valid"""
+        from pip.req.req_file import parse_requirements
 
-    def _get_result_queue_name(self):
-        return str(uuid.uuid4())
+        # create a temporary file and store the spec there since
+        # `parse_requirements` requires a file
+        with NamedTemporaryFile(mode='w+', suffix='pysolve') as f:
+            f.write(spec)
+            f.flush()
+            reqs = parse_requirements(f.name, session=f.name)
+
+        if reqs:
+            return True
+
+        return False
+
+    def _whats_my_name(self, id):
+        return VALIDATION_JOB_PREFIX + str(id)
+
+    def _schedule_validation_job(self, id, spec, ecosystem):  # pragma: no cover
+        logger.debug('scheduling validation id {}'.format(id))
+
+        _name = self._whats_my_name(id)
+        # TODO select validator image based on ecosystem
+        # _image = self._job_image_name(ecosystem)
+
+        _job_manifest = {
+            'kind': 'Job',
+            'spec': {
+                'template':
+                    {
+                        'metadata': {'labels': {'validation-id': str(id)}},
+                        'spec':
+                        {'serviceAccountName': 'validation-job-runner',
+                         'containers': [
+                             {
+                                 'image': 'pypi-validator',
+                                 'name': _name,
+                                 'env': [
+                                     {
+                                         'name': 'STACK_SPECIFICATION',
+                                         'value': spec.replace('\n', '\\n')
+                                     },
+                                     {
+                                         'name': 'ECOSYSTEM',
+                                         'value': ecosystem
+                                     },
+                                     {
+                                         'name': 'XDG_CACHE_HOME',
+                                         'value': '/tmp/.xdg-cache'
+                                     },
+                                     {
+                                         'name': 'DEBUG',
+                                         'value': 'YES'
+                                     }
+                                 ]
+                             }
+                         ],
+                            'restartPolicy': 'Never'},
+                        'metadata': {'name': _name}}},
+            'apiVersion': 'batch/v1',
+            'metadata': {'name': _name, 'labels': {'validation-id': str(id)}}
+        }
+
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
+        _client = client.CoreV1Api()
+        _api = client.BatchV1Api()
+
+        try:
+            _resp = _api.create_namespaced_job(
+                body=_job_manifest, namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE)
+        except client.rest.ApiException as e:
+            logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
+            raise ServiceUnavailable('OpenShift')
+
+    def _get_all_scheduled_validation_job(self):  # pragma: no cover
+        logger.debug('looking for all validations')
+
+        result = []
+
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
+        _client = client.CoreV1Api()
+        _api = client.BatchV1Api()
+
+        try:
+            _resp = _api.list_namespaced_job(
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE)
+
+            # if we got a none empty list of jobs, lets filter the ones out that belong to us...
+            if not _resp.items is None:
+                for job in _resp.items:
+                    if job.metadata.name.startswith(VALIDATION_JOB_PREFIX):
+                        result.append(job)
+
+        except client.rest.ApiException as e:
+            logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
+            raise ServiceUnavailable('OpenShift')
+
+        except IndexError as e:
+            logger.debug('we got no jobs...')
+
+            return []
+
+        return result
+
+    def _get_scheduled_validation_job(self, id):  # pragma: no cover
+        logger.debug('looking for validation id {}'.format(id))
+
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
+        _client = client.CoreV1Api()
+        _api = client.BatchV1Api()
+
+        try:
+            _resp = _api.list_namespaced_job(
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE, include_uninitialized=True, label_selector='validation-id='+str(id))
+
+            if not _resp.items is None:
+                return _resp.items[0]
+        except client.rest.ApiException as e:
+            logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
+            raise ServiceUnavailable('OpenShift')
+
+        except IndexError as e:
+            logger.debug('we got no jobs...')
+
+            return None
+
+        return None
+
+    def _get_job_log(self, id):  # pragma: no cover
+        logger.debug('getting logs for validation id {}'.format(id))
+
+        # if we got no BEARER_TOKEN, we use local config
+        if self.BEARER_TOKEN is None:
+            config.load_kube_config()
+        else:
+            config.load_incluster_config()
+
+        _client = client.CoreV1Api()
+
+        try:
+            # 1. lets get the pod that ran our job
+            _resp = _client.list_namespaced_pod(
+                namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE)  # , label_selector='job-name=validation-id-'+str(id))
+
+            for pod in _resp.items:
+                if 'job-name' in pod.metadata.labels.keys():
+                    logger.debug('found a Validation Job: {}'.format(
+                        pod.metadata.labels['job-name']))
+
+                    # TODO this may be more than one Pod (because it failed or so...)
+                    if pod.metadata.labels['job-name'].endswith(str(id)):
+                        _log = _client.read_namespaced_pod_log(
+                            pod.metadata.name, namespace=THOTH_DEPENDENCY_MONKEY_NAMESPACE, pretty=True)
+
+                        return _log
+
+        except client.rest.ApiException as e:
+            logger.error(e)
+
+            if e.status == 403:
+                raise ServiceUnavailable('OpenShift auth failed')
+
+            raise ServiceUnavailable('OpenShift')
