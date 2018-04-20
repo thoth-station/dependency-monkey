@@ -10,7 +10,7 @@ metadata:
     openshift.io/display-name: Thoth Dependency Monkey API BuildConfig
     version: 0.1.0
     tags: poc,thoth,thoth-dependency-monkey-api,ai-stacks
-    template.openshift.io/documentation-url: https://github.com/AICoE/Thoth/
+    template.openshift.io/documentation-url: https://github.com/Thoth-Station/
     template.openshift.io/long-description: This is Thoth Dependency Monkey API BuildConfig, this template is meant to be used by Jenkins, but could also be used by humans...
     template.openshift.io/provider-display-name: Red Hat, Inc.
 
@@ -62,7 +62,7 @@ objects:
       sourceStrategy:
         from:
           kind: ImageStreamTag
-          name: python:latest
+          name: python-36-centos7:latest
     triggers:
     - type: ImageChange
       imageChange: {}
@@ -92,7 +92,7 @@ parameters:
   displayName: Thoth Dependency Monkey git repository
   required: true
   name: GITHUB_URL
-  value: 'https://github.com/AICoE/thoth-dependency-monkey'
+  value: 'https://github.com/Thoth-Station/dependency-monkey'
 
 - description: Git repository for Thoth's Dependency Monkey API
   displayName: Thoth Dependency Monkey git reference

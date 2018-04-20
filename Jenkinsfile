@@ -2,11 +2,8 @@
 OPENSHIFT_SERVICE_ACCOUNT = 'jenkins'
 DOCKER_REPO_URL = 'docker-registry.default.svc.cluster.local:5000'
 CI_NAMESPACE= env.CI_PIPELINE_NAMESPACE ?: 'ai-coe'
-CI_TEST_NAMESPACE = env.CI_THOTH_TEST_NAMESPACE ?: 'ai-coe'
+CI_TEST_NAMESPACE = env.CI_THOTH_TEST_NAMESPACE ?: CI_NAMESPACE
 
-// Defaults for SCM operations
-env.ghprbGhRepository = env.ghprbGhRepository ?: 'AICoE/thoth-dependency-monkey'
-env.ghprbActualCommit = env.ghprbActualCommit ?: 'master'
 // github-organization-plugin jobs are named as 'org/repo/branch'
 // we don't want to assume that the github-organization job is at the top-level
 // instead we get the total number of tokens (size) 
@@ -17,14 +14,12 @@ org = tokens[tokens.size()-3]
 repo = tokens[tokens.size()-2]
 branch = tokens[tokens.size()-1]
 
-echo "${org} ${repo} ${branch}"
-
 // If this PR does not include an image change, then use this tag
 STABLE_LABEL = "stable"
 tagMap = [:]
 
 // IRC properties
-IRC_NICK = "aicoe-bot"
+IRC_NICK = "sesheta"
 IRC_CHANNEL = "#thoth-station"
 
 properties(
@@ -61,12 +56,12 @@ pipeline {
     agent {
         kubernetes {
             cloud 'openshift'
-            label 'thoth-master'
+            label 'thoth'
             serviceAccount OPENSHIFT_SERVICE_ACCOUNT
             containerTemplate {
                 name 'jnlp'
                 args '${computer.jnlpmac} ${computer.name}'
-                image DOCKER_REPO_URL + '/'+ CI_NAMESPACE +'/jenkins-aicoe-slave:' + STABLE_LABEL
+                image DOCKER_REPO_URL + '/'+ CI_NAMESPACE +'/jenkins-aicoe-slave:latest'
                 ttyEnabled false
                 command ''
             }
@@ -127,25 +122,25 @@ pipeline {
             }
         }
         stage("Build Container Images") {
-//            parallel {
-//                stage("API Service") {
+            parallel { // openshift client gets confused if I do communicate with Openshift in a parallel{} ?!
+                stage("API Service") {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
                             tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", "${env.TAG}")
-//                        }
+                        }
 
-//                    }
-//                }
-//                stage("PyPI Validator") {
-//                    steps {
+                    }
+                }
+                stage("PyPI Validator") {
+                    steps {
                         echo "Building PyPI Validator container image..."
-//                        script {
+                        script {
                             tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", "${env.TAG}")
                         }
                     }   
-//                } 
-//            }
+                } 
+            }
         }
         stage("Deploy to Test") {
             steps {
@@ -199,34 +194,41 @@ pipeline {
                     pipelineUtils.printLabelMap(tagMap)
                 }
             }
-        }
+        } // stage
+        stage("Tag stable image") {
+            steps {
+                script {
+                    // Tag ImageStreamTag ${env.TAG} as our new :stable
+                    openshift.withCluster() {
+                        openshift.withProject(CI_TEST_NAMESPACE) {
+                            echo "Creating stable tag from dependency-monkey-api:${env.TAG}"
+
+                            openshift.tag("${CI_TEST_NAMESPACE}/dependency-monkey-api:${env.TAG}", "${CI_TEST_NAMESPACE}/dependency-monkey-api:stable")
+                        }
+                    } // withCluster
+                } // script
+            } // steps
+        } // stage
+        stage("Trigger Promotion") {
+            steps {
+                script {
+                    echo 'trigger promotion to Stage'
+                } // script
+            } // steps
+        } // stage
     }
     post {
         always {
             script {
                 // junit 'reports/*.xml'
 
-                String prMsg = ""
-                if (env.ghprbActualCommit != null && env.ghprbActualCommit != "master") {
-                    prMsg = "(PR #${env.ghprbPullId} ${env.ghprbPullAuthorLogin})"
-                }
-                def message = "${JOB_NAME} ${prMsg} build #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
-
-                pipelineUtils.sendIRCNotification("${IRC_NICK}", IRC_CHANNEL, message)
-                
+                pipelineUtils.sendIRCNotification("${IRC_NICK}", 
+                    IRC_CHANNEL, 
+                    "${JOB_NAME} #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}")
             }
         }
         success {
             echo "All Systems GO!"
-        }
-        failure {
-            script {
-                def message = "${JOB_NAME} build #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
-
-//                mattermostSend channel: "#thoth-station", icon: 'https://avatars1.githubusercontent.com/u/33906690', message: "${message}"
-
-                error "BREAK BREAK BREAK - build failed!"
-            }
         }
     }
 }
