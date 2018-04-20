@@ -122,25 +122,25 @@ pipeline {
             }
         }
         stage("Build Container Images") {
-//            parallel { // openshift client gets confused if I do communicate with Openshift in a parallel{} ?!
-//                stage("API Service") {
+            parallel { // openshift client gets confused if I do communicate with Openshift in a parallel{} ?!
+                stage("API Service") {
                     steps {
                         echo "Building Thoth Dependency Monkey container image..."
                         script {
                             tagMap['dependency-monkey-api'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "dependency-monkey-api", "${env.TAG}")
-//                        }
+                        }
 
-//                    }
-//                }
-//                stage("PyPI Validator") {
-//                    steps {
+                    }
+                }
+                stage("PyPI Validator") {
+                    steps {
                         echo "Building PyPI Validator container image..."
-//                        script {
+                        script {
                             tagMap['pypi-validator'] = aIStacksPipelineUtils.buildImageWithTag(CI_TEST_NAMESPACE, "pypi-validator", "${env.TAG}")
                         }
                     }   
-//                } 
-//            }
+                } 
+            }
         }
         stage("Deploy to Test") {
             steps {
@@ -224,7 +224,7 @@ pipeline {
 
                 pipelineUtils.sendIRCNotification("${IRC_NICK}", 
                     IRC_CHANNEL, 
-                    "${JOB_NAME} #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}")                
+                    "${JOB_NAME} #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}")
             }
         }
         success {

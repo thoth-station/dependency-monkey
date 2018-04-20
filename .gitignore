@@ -103,3 +103,4 @@ ENV/
 .pytest_cache/
 images/npm-validator/node_modules/
 .vscode/
+scratch.txt
