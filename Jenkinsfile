@@ -14,14 +14,12 @@ org = tokens[tokens.size()-3]
 repo = tokens[tokens.size()-2]
 branch = tokens[tokens.size()-1]
 
-echo "${org} ${repo} ${branch}"
-
 // If this PR does not include an image change, then use this tag
 STABLE_LABEL = "stable"
 tagMap = [:]
 
 // IRC properties
-IRC_NICK = "aicoe-bot"
+IRC_NICK = "sesheta"
 IRC_CHANNEL = "#thoth-station"
 
 properties(
@@ -231,15 +229,6 @@ pipeline {
         }
         success {
             echo "All Systems GO!"
-        }
-        failure {
-            script {
-                mattermostSend channel: "#thoth-station", 
-                    icon: 'https://avatars1.githubusercontent.com/u/33906690', 
-                    message: "${JOB_NAME} #${BUILD_NUMBER}: ${currentBuild.currentResult}: ${BUILD_URL}"
-
-                error "BREAK BREAK BREAK - build failed!"
-            }
         }
     }
 }
