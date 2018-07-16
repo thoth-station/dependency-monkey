@@ -6,12 +6,14 @@ labels:
 metadata:
   name: dependency-monkey-api
   annotations:
-    description: This is Thoth Dependency Monkey, it validates package dependencies in software stacks.
+    description: >
+      This is Thoth Dependency Monkey, it validates package dependencies in software stacks.
     openshift.io/display-name: Dependency Monkey
-    version: 0.1.0
+    version: 0.2.0
     tags: thoth,dependency_monkey, dependencymonkey, poc
     template.openshift.io/documentation-url: https://github.com/Thoth-Station/dependency-monkey/
-    template.openshift.io/long-description: This template defines resources needed
+    template.openshift.io/long-description: >
+      This template defines resources needed
       to deploy Thoth Dependency Monkey as a Proof-of-Concept to OpenShift.
     template.openshift.io/provider-display-name: Red Hat, Inc.
 message: |-
@@ -20,115 +22,102 @@ message: |-
   You should be able to access .../openapi/ now.
 
   Have Fun!
-  
+
 objects:
-## Service Accounts
-- kind: ServiceAccount
-  apiVersion: v1
-  metadata:
-    name: validation-job-runner
-    app: dependency-monkey
-  automountServiceAccountToken: true
-- apiVersion: v1
-  kind: RoleBinding
-  metadata:
-    name: validation-job-binding
-    labels:
-      app: dependency-monkey
-  roleRef:
-    kind: ClusterRole
-    name: view
-  subjects:
-    - kind: ServiceAccount
+  - kind: ServiceAccount
+    apiVersion: v1
+    metadata:
       name: validation-job-runner
-
-#
-# Routes
-- kind: Route
-  apiVersion: v1
-  metadata:
-    name: dependency-monkey-api
-    labels:
       app: dependency-monkey
-  spec:
-    to:
-      kind: Service
+    automountServiceAccountToken: true
+  - apiVersion: v1
+    kind: RoleBinding
+    metadata:
+      name: validation-job-binding
+      labels:
+        app: dependency-monkey
+    roleRef:
+      kind: ClusterRole
+      name: view
+    subjects:
+      - kind: ServiceAccount
+        name: validation-job-runner
+
+  - kind: Route
+    apiVersion: v1
+    metadata:
       name: dependency-monkey-api
+      labels:
+        app: dependency-monkey
+    spec:
+      to:
+        kind: Service
+        name: dependency-monkey-api
 
-- apiVersion: v1
-  kind: Service
-  metadata:
-    labels:
-      app: dependency-monkey
-    name: dependency-monkey-api
-  spec:
-    ports:
-    - name: 8080-tcp
-      port: 8080
-      protocol: TCP
-      targetPort: 8080
-    selector:
-      deploymentconfig: dependency-monkey-api
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app: dependency-monkey
+      name: dependency-monkey-api
+    spec:
+      ports:
+        - name: 8080-tcp
+          port: 8080
+          protocol: TCP
+          targetPort: 8080
+      selector:
+        deploymentconfig: dependency-monkey-api
 
-- apiVersion: v1
-  kind: DeploymentConfig
-  metadata:
-    labels:
-      app: dependency-monkey
-    name: dependency-monkey-api
-  spec:
-    replicas: 1
-    selector:
-      app: dependency-monkey
-      deploymentconfig: dependency-monkey-api
-    template:
-      metadata:
-        labels:
-          app: dependency-monkey
-          deploymentconfig: dependency-monkey-api
-      spec:
-        serviceAccount: validation-job-runner
-        serviceAccountName: validation-job-runner
-        containers:
-        - name: dependency-monkey-api
-          from:
-            kind: ImageStreamTag
-            name: dependency-monkey-api:latest
-          imagePullPolicy: Always
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      labels:
+        app: dependency-monkey
+      name: dependency-monkey-api
+    spec:
+      replicas: 1
+      selector:
+        app: dependency-monkey
+        deploymentconfig: dependency-monkey-api
+      template:
+        metadata:
+          labels:
+            app: dependency-monkey
+            deploymentconfig: dependency-monkey-api
+        spec:
+          serviceAccount: validation-job-runner
           serviceAccountName: validation-job-runner
-          ports:
-          - containerPort: 8080
-            protocol: TCP
-          env:
-          - name: THOTH_DEPENDENCY_MONKEY_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          resources:
-            limits:
-              cpu: 500m
-              memory: 256Mi
-            requests:
-              cpu: 250m
-              memory: 256Mi
-    test: false
-    triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChangeParams:
-        automatic: true
-        containerNames:
-          - dependency-monkey-api
-        from:
-          kind: ImageStreamTag
-          name: 'user-api:latest'
-
-- kind: ImageStream
-  apiVersion: v1
-  metadata:
-    name: dependency-monkey-api
-  spec:
-    lookupPolicy:
-      local: true
-  status:
-    dockerImageRepository: ""
+          containers:
+            - name: dependency-monkey-api
+              from:
+                kind: ImageStreamTag
+                name: dependency-monkey-api:latest
+              imagePullPolicy: Always
+              serviceAccountName: validation-job-runner
+              ports:
+                - containerPort: 8080
+                  protocol: TCP
+              env:
+                - name: THOTH_DEPENDENCY_MONKEY_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+                requests:
+                  cpu: 250m
+                  memory: 256Mi
+      test: false
+      triggers:
+        - type: ConfigChange
+        - type: ImageChange
+          imageChangeParams:
+            automatic: true
+            containerNames:
+              - dependency-monkey-api
+            from:
+              kind: ImageStreamTag
+              name: 'user-api:latest'

@@ -6,102 +6,102 @@ labels:
 metadata:
   name: thoth-dependency-monkey-api-buildconfig
   annotations:
-    description: This is Thoth Dependency Monkey API BuildConfig, this template is meant to be used by Jenkins, but could also be used by humans...
+    description: >
+      This is Thoth Dependency Monkey API BuildConfig, this template is meant to be used by Bots,
+      but could also be used by humans...
     openshift.io/display-name: Thoth Dependency Monkey API BuildConfig
-    version: 0.1.0
+    version: 0.2.0
     tags: poc,thoth,thoth-dependency-monkey-api,ai-stacks
     template.openshift.io/documentation-url: https://github.com/Thoth-Station/
-    template.openshift.io/long-description: This is Thoth Dependency Monkey API BuildConfig, this template is meant to be used by Jenkins, but could also be used by humans...
+    template.openshift.io/long-description: >
+      This is Thoth Dependency Monkey API BuildConfig, this template is meant to be used by Bots,
+      but could also be used by humans...
     template.openshift.io/provider-display-name: Red Hat, Inc.
 
 objects:
-#
-# Image streams
-- apiVersion: v1
-  kind: ImageStream
-  metadata:
-    labels:
-      app: dependency-monkey
-    name: dependency-monkey-api
-  spec:
-    lookupPolicy:
-      local: true
-    name: stable
+  - apiVersion: v1
+    kind: ImageStream
+    metadata:
+      labels:
+        app: dependency-monkey
+      name: dependency-monkey-api
+    spec:
+      lookupPolicy:
+        local: true
+      name: stable
 
-- kind: ImageStream
-  apiVersion: v1
-  metadata:
-    labels:
-      app: dependency-monkey
-    name: pypi-validator
-  spec:
-    lookupPolicy:
-      local: true
-    name: stable
+  - kind: ImageStream
+    apiVersion: v1
+    metadata:
+      labels:
+        app: dependency-monkey
+      name: pypi-validator
+    spec:
+      lookupPolicy:
+        local: true
+      name: stable
 
-#
-# Build configs
-- apiVersion: v1
-  kind: BuildConfig
-  metadata:
-    name: dependency-monkey-api
-    labels:
-      app: dependency-monkey
-  spec:
-    output:
-      to:
-        kind: ImageStreamTag
-        name: "dependency-monkey-api:${IMAGE_STREAM_TAG}"
-    source:
-      type: Git
-      git:
-        uri: ${GITHUB_URL}
-        ref: ${GITHUB_REF}
-    strategy:
-      type: Source
-      sourceStrategy:
-        from:
+  - apiVersion: v1
+    kind: BuildConfig
+    metadata:
+      name: dependency-monkey-api
+      labels:
+        app: dependency-monkey
+    spec:
+      output:
+        to:
           kind: ImageStreamTag
-          name: python-36-centos7:latest
-    triggers:
-    - type: ImageChange
-      imageChange: {}
+          name: "dependency-monkey-api:${IMAGE_STREAM_TAG}"
+      source:
+        type: Git
+        git:
+          uri: ${GITHUB_URL}
+          ref: ${GITHUB_REF}
+      strategy:
+        type: Source
+        sourceStrategy:
+          from:
+            kind: ImageStreamTag
+            name: python-36-centos7:latest
+      triggers:
+        - type: ImageChange
+          imageChange: {}
 
-- kind: BuildConfig
-  apiVersion: v1
-  metadata:
-    labels:
-      app: dependency-monkey
-    name: pypi-validator
-  spec:
-    output:
-      to:
-        kind: ImageStreamTag
-        name: "pypi-validator:${IMAGE_STREAM_TAG}"
-    source:
-      type: Git
-      git:
-        uri: ${GITHUB_URL}
-        ref: ${GITHUB_REF}
-      contextDir: images/pypi-validator
-    strategy:
-      type: Docker
+  - kind: BuildConfig
+    apiVersion: v1
+    metadata:
+      labels:
+        app: dependency-monkey
+      name: pypi-validator
+    spec:
+      output:
+        to:
+          kind: ImageStreamTag
+          name: "pypi-validator:${IMAGE_STREAM_TAG}"
+      source:
+        type: Git
+        git:
+          uri: ${GITHUB_URL}
+          ref: ${GITHUB_REF}
+        contextDir: images/pypi-validator
+      strategy:
+        type: Docker
 
 parameters:
-- description: Git repository for Thoth's Dependency Monkey API
-  displayName: Thoth Dependency Monkey git repository
-  required: true
-  name: GITHUB_URL
-  value: 'https://github.com/Thoth-Station/dependency-monkey'
+  - description: Git repository for Thoth's Dependency Monkey API
+    displayName: Thoth Dependency Monkey git repository
+    required: true
+    name: GITHUB_URL
+    value: 'https://github.com/Thoth-Station/dependency-monkey'
 
-- description: Git repository for Thoth's Dependency Monkey API
-  displayName: Thoth Dependency Monkey git reference
-  required: true
-  name: GITHUB_REF
-  value: 'master'
+  - description: Git repository for Thoth's Dependency Monkey API
+    displayName: Thoth Dependency Monkey git reference
+    required: true
+    name: GITHUB_REF
+    value: 'master'
 
-- description: Tag of the output ImageStream the resulting container image should go to
-  displayName: ImageStream Tag
-  required: true
-  name: IMAGE_STREAM_TAG
-  value: 'latest'
+  - description: Tag of the output ImageStream the resulting container image should go to
+    displayName: ImageStream Tag
+    required: true
+    name: IMAGE_STREAM_TAG
+    value: 'latest'

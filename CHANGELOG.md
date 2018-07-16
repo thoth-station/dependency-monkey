@@ -1,12 +1,6 @@
-# Changelog for Thoth's Storage Module
+# Changelog for Thoth's Dependency Monkey Service
 
-## [0.0.33] - 2018-Jul-01 - goern
-
-### Changed
-
-Coala now has a max_line_lenght of 120, some unneeded E501 have been removed.
-
-## [0.0.30] - 2018-Jun-26 - goern
+## [0.2.0] - 2018-Jul-16 - goern
 
 ### Added
 
