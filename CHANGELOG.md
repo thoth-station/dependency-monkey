@@ -1,12 +1,9 @@
-# Changelog
+# Changelog for Thoth's Dependency Monkey Service
 
-## [0.1.0] - goern - 2018-Mar-02
+## [0.2.0] - 2018-Jul-16 - goern
 
 ### Added
 
- - Update openshift from 0.4.3 to 0.4.4 [goern]
-    -  (edit)  requirements.txt
- - added index/get_all_validations to API [goern]
-    - (edit)  thoth_dependency_monkey/apis/validations.py
-    - (edit)  thoth_dependency_monkey/validation_dao.py
-    - (edit)  thoth_dependency_monkey/apis/__init__.py
+Starting with this release we have a Zuul-CI pipeline that:
+
+* lints on Pull Requrest and gate/merge
