@@ -12,7 +12,7 @@ WORKDIR /opt/app-root/src
 
 RUN mkdir /.cache && \
     pip3 install --upgrade pip && \
-    pip3 install pip-tools thoth-analyzer && \
+    pip3 install pip-tools==1.11.0 pip==8.1.2 thoth-analyzer && \
     chown 1001:1001 -R /opt/app-root/src /.cache
 
 USER 1001
